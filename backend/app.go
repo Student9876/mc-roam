@@ -157,3 +157,33 @@ func generateInviteCode() string {
 	// Simple timestamp-based unique string for now
 	return fmt.Sprintf("%d", time.Now().UnixNano())[10:]
 }
+
+// JoinServer adds the user to a server using an invite code
+func (a *App) JoinServer(inviteCode string, username string) string {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// 1. Find the server with this code
+	var server ServerGroup
+	err := collection.FindOne(ctx, bson.M{"invite_code": inviteCode}).Decode(&server)
+	if err != nil {
+		return "Error: Invalid invite code"
+	}
+
+	// 2. Check if user is already a member
+	for _, member := range server.Members {
+		if member == username {
+			return "Error: You are already in this server"
+		}
+	}
+
+	// 3. Add user to the members list
+	update := bson.M{"$push": bson.M{"members": username}}
+	_, err = collection.UpdateOne(ctx, bson.M{"_id": server.ID}, update)
+	if err != nil {
+		return "Error: Failed to join server"
+	}
+
+	return "Success: Joined " + server.Name
+}

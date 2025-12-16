@@ -18,6 +18,7 @@ export default function AuthPage() {
         if (result.startsWith("Success")) {
             // Save user info locally if needed (optional)
             // Navigate to Dashboard
+            sessionStorage.setItem("mc_username", username);
             navigate("/dashboard");
         } else {
             setStatus(result);

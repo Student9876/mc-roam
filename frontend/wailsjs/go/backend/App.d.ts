@@ -8,6 +8,8 @@ export function GetMyServers(arg1:string):Promise<Array<backend.ServerGroup>>;
 
 export function Greet(arg1:string):Promise<string>;
 
+export function JoinServer(arg1:string,arg2:string):Promise<string>;
+
 export function Login(arg1:string,arg2:string):Promise<string>;
 
 export function Register(arg1:string,arg2:string):Promise<string>;
