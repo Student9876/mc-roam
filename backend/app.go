@@ -1,4 +1,4 @@
-package backend // <--- CHANGE THIS (was "package main")
+package backend
 
 import (
 	"context"
@@ -15,10 +15,19 @@ func NewApp() *App {
 	return &App{}
 }
 
-// Startup is called when the app starts. The context is saved
-// so we can call the runtime methods later.
+// Startup is called when the app starts.
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
+
+	// --- DATABASE CONNECTION TEST ---
+	// TODO: Replace this string with your actual MongoDB Connection String
+	connStr := "mongodb+srv://shouvik9876:9674350711%40@cluster0.j3d6lug.mongodb.net/"
+
+	_, err := ConnectDB(connStr)
+	if err != nil {
+		fmt.Printf("❌ CRITICAL: Database connection failed: %v\n", err)
+	}
+	// --------------------------------
 }
 
 // Greet returns a greeting for the given name
