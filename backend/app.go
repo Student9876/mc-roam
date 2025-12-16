@@ -101,3 +101,59 @@ func (a *App) Login(username string, password string) string {
 
 	return "Success: Logged in as " + user.Username
 }
+
+// --- SERVER MANAGEMENT METHODS ---
+
+// CreateServer creates a new server group
+func (a *App) CreateServer(serverName string, ownerUsername string) string {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Create the object
+	newServer := ServerGroup{
+		Name:       serverName,
+		OwnerID:    ownerUsername,
+		Members:    []string{ownerUsername}, // Owner is the first member
+		InviteCode: generateInviteCode(),    // We'll add this helper below
+		Lock: ServerLock{
+			IsRunning: false,
+		},
+	}
+
+	_, err := collection.InsertOne(ctx, newServer)
+	if err != nil {
+		return fmt.Sprintf("Error: Failed to create server: %v", err)
+	}
+
+	return "Success: Server created!"
+}
+
+// GetMyServers returns a list of servers the user belongs to
+func (a *App) GetMyServers(username string) []ServerGroup {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Find servers where 'members' array contains 'username'
+	filter := bson.M{"members": username}
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return []ServerGroup{}
+	}
+
+	var servers []ServerGroup
+	if err = cursor.All(ctx, &servers); err != nil {
+		return []ServerGroup{}
+	}
+
+	return servers
+}
+
+// Helper to generate a random code (e.g., "AB12")
+func generateInviteCode() string {
+	// Simple timestamp-based unique string for now
+	return fmt.Sprintf("%d", time.Now().UnixNano())[10:]
+}
