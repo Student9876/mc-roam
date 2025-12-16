@@ -1,28 +1,19 @@
-import {useState} from 'react';
-import logo from './assets/images/logo-universal.png';
+import { HashRouter, Routes, Route } from 'react-router-dom';
+import AuthPage from './pages/AuthPage';
+import Dashboard from './pages/Dashboard';
 import './App.css';
-import {Greet} from "../wailsjs/go/backend/App";
 
 function App() {
-    const [resultText, setResultText] = useState("Please enter your name below 👇");
-    const [name, setName] = useState('');
-    const updateName = (e) => setName(e.target.value);
-    const updateResultText = (result) => setResultText(result);
-
-    function greet() {
-        Greet(name).then(updateResultText);
-    }
-
     return (
-        <div id="App">
-            <img src={logo} id="logo" alt="logo"/>
-            <div id="result" className="result">{resultText}</div>
-            <div id="input" className="input-box">
-                <input id="name" className="input" onChange={updateName} autoComplete="off" name="input" type="text"/>
-                <button className="btn" onClick={greet}>Greet</button>
-            </div>
-        </div>
-    )
+        // We use HashRouter because Wails apps serve from a local file system
+        // BrowserRouter often fails in desktop apps without server configuration
+        <HashRouter>
+            <Routes>
+                <Route path="/" element={<AuthPage />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+            </Routes>
+        </HashRouter>
+    );
 }
 
-export default App
+export default App;
