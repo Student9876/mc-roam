@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GetMyServers, CreateServer, JoinServer, StartServer, StopServer } from '../../wailsjs/go/backend/App';
+import { GetMyServers, CreateServer, JoinServer, StartServer, StopServer, AuthorizeDrive } from '../../wailsjs/go/backend/App';
 
 export default function Dashboard() {
     const [servers, setServers] = useState([]);
     const [newServerName, setNewServerName] = useState("");
     const [inviteCode, setInviteCode] = useState(""); // New State
     const [rcloneConf, setRcloneConf] = useState("");
+    const [isAuthorizing, setIsAuthorizing] = useState(false); // UI Loading state
 
     const currentUser = sessionStorage.getItem("mc_username") || "Unknown";
     const navigate = useNavigate();
@@ -18,12 +19,24 @@ export default function Dashboard() {
         setServers(list || []);
     };
 
-    const handleCreate = async () => {
-        if (!newServerName || !rcloneConf) {
-            alert("Please enter a name AND paste your rclone.conf content!");
-            return;
+    const handleAuthorize = async () => {
+        setIsAuthorizing(true);
+        // Pass empty strings to use the hardcoded defaults in Go
+        const configResult = await AuthorizeDrive("", "");
+
+        if (configResult.startsWith("Error")) {
+            alert(configResult);
+        } else {
+            setRcloneConf(configResult); // Fill the hidden state
         }
-        await CreateServer(newServerName, currentUser, rcloneConf); // Pass 3 args
+        setIsAuthorizing(false);
+    };
+
+    const handleCreate = async () => {
+        if (!newServerName) return alert("Enter a name!");
+        if (!rcloneConf) return alert("You must connect Google Drive first!");
+
+        await CreateServer(newServerName, currentUser, rcloneConf);
         setNewServerName("");
         setRcloneConf("");
         loadServers();
@@ -78,14 +91,31 @@ export default function Dashboard() {
                             value={newServerName}
                             onChange={(e) => setNewServerName(e.target.value)}
                         />
-                        {/* CONFIG TEXT AREA */}
-                        <textarea
-                            style={{ ...styles.input, height: "60px", fontSize: "0.8rem", fontFamily: "monospace" }}
-                            placeholder="Paste rclone.conf content here..."
-                            value={rcloneConf}
-                            onChange={(e) => setRcloneConf(e.target.value)}
-                        />
-                        <button className="btn" onClick={handleCreate}>Create Server</button>
+
+                        {/* The Wizard UI */}
+                        {!rcloneConf ? (
+                            <button
+                                className="btn"
+                                onClick={handleAuthorize}
+                                disabled={isAuthorizing}
+                                style={{ background: isAuthorizing ? "#555" : "#fab005", color: "black" }}
+                            >
+                                {isAuthorizing ? "Check your Browser..." : "🔗 Connect Google Drive"}
+                            </button>
+                        ) : (
+                            <div style={{ color: "#51cf66", fontSize: "0.9rem", textAlign: "center", border: "1px solid #51cf66", padding: "8px", borderRadius: "4px" }}>
+                                ✅ Drive Connected!
+                            </div>
+                        )}
+
+                        <button
+                            className="btn"
+                            onClick={handleCreate}
+                            disabled={!rcloneConf} // Disable if not connected
+                            style={{ opacity: rcloneConf ? 1 : 0.5 }}
+                        >
+                            Create Server
+                        </button>
                     </div>
                 </div>
 

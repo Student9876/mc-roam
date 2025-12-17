@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings" // Add this to imports at top!
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"  // Add this
@@ -251,12 +253,12 @@ func (a *App) StartServer(serverID string, username string) string {
 
 	// 2. Pull data from Cloud (Sync Down)
 	// We are syncing the 'world' folder from the remote
-	// err = a.RunSync(SyncDown, "minecraft-server", localServer)
-	// if err != nil {
-	// 	// If sync fails, release the lock immediately so we aren't stuck
-	// 	a.StopServer(serverID, username)
-	// 	return fmt.Sprintf("Error: Sync failed: %v", err)
-	// }
+	err = a.RunSync(SyncDown, "minecraft-server", localServer)
+	if err != nil {
+		// If sync fails, release the lock immediately so we aren't stuck
+		a.StopServer(serverID, username)
+		return fmt.Sprintf("Error: Sync failed: %v", err)
+	}
 	// --- NEW: LAUNCH THE GAME ---
 	err = a.RunMinecraftServer()
 	if err != nil {
@@ -326,4 +328,61 @@ func (a *App) StopServer(serverID string, username string) string {
 	}
 
 	return "Success: Server Stopped & Saved!"
+}
+
+// AuthorizeDrive runs the interactive Rclone login flow
+// It returns the full config string (not just the token)
+func (a *App) AuthorizeDrive(clientID string, clientSecret string) string {
+	rcloneBin := "./rclone.exe"
+
+	// 1. Use default keys if user didn't provide custom ones
+	// (You can hardcode your keys here so friends don't need to type them!)
+	if clientID == "" {
+		clientID = "591449617847-e8dutllhdbipah552jtfn0snm03qdkr3.apps.googleusercontent.com"
+	}
+	if clientSecret == "" {
+		clientSecret = "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"
+	}
+
+	// 2. Run: rclone authorize "drive" "id" "secret"
+	// This command opens the browser AUTOMATICALLY.
+	cmd := exec.Command(rcloneBin, "authorize", "drive", clientID, clientSecret)
+
+	// We need to capture the output (the token JSON)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Sprintf("Error: Auth failed. Did you close the browser? (%v)", err)
+	}
+
+	// 3. Parse the output to find the JSON token
+	// Rclone prints some text like "Paste the following in your shell..."
+	// The token is the JSON part bounded by { ... }
+	tokenJSON := string(output)
+
+	// Simple cleanup: Rclone output usually ends with the JSON.
+	// We'll just construct the config using the whole output string as the token
+	// (or you might need to trim it if rclone is chatty, but usually it works).
+
+	// Let's trim whitespace just in case
+	tokenJSON = strings.TrimSpace(tokenJSON)
+	// Sometimes rclone prints "Paste this:" before the JSON. We need to strip that if present.
+	// A simple hack: find the first '{' and the last '}'
+	start := strings.Index(tokenJSON, "{")
+	end := strings.LastIndex(tokenJSON, "}")
+
+	if start != -1 && end != -1 {
+		tokenJSON = tokenJSON[start : end+1]
+	} else {
+		return "Error: Could not find token in Rclone output."
+	}
+
+	// 4. Construct the Final Config
+	configTemplate := `[mc-remote]
+type = drive
+scope = drive
+client_id = %s
+client_secret = %s
+token = %s
+`
+	return fmt.Sprintf(configTemplate, clientID, clientSecret, tokenJSON)
 }
