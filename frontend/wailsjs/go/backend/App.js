@@ -25,3 +25,11 @@ export function Login(arg1, arg2) {
 export function Register(arg1, arg2) {
   return window['go']['backend']['App']['Register'](arg1, arg2);
 }
+
+export function StartServer(arg1, arg2) {
+  return window['go']['backend']['App']['StartServer'](arg1, arg2);
+}
+
+export function StopServer(arg1, arg2) {
+  return window['go']['backend']['App']['StopServer'](arg1, arg2);
+}

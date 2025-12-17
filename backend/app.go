@@ -111,12 +111,17 @@ func (a *App) CreateServer(serverName string, ownerUsername string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// 1. Generate a Unique ID manually (String format)
+	// This prevents the ObjectID mismatch issue
+	newID := fmt.Sprintf("srv_%d", time.Now().UnixNano())
+
 	// Create the object
 	newServer := ServerGroup{
+		ID:         newID, // <--- EXPLICITLY SET THE ID
 		Name:       serverName,
 		OwnerID:    ownerUsername,
-		Members:    []string{ownerUsername}, // Owner is the first member
-		InviteCode: generateInviteCode(),    // We'll add this helper below
+		Members:    []string{ownerUsername},
+		InviteCode: generateInviteCode(),
 		Lock: ServerLock{
 			IsRunning: false,
 		},
@@ -186,4 +191,74 @@ func (a *App) JoinServer(inviteCode string, username string) string {
 	}
 
 	return "Success: Joined " + server.Name
+}
+
+// --- POWER MANAGEMENT METHODS ---
+
+// StartServer attempts to acquire the lock for a server
+func (a *App) StartServer(serverID string, username string) string {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// 1. The Filter: Match ID AND ensure it is NOT running
+	filter := bson.M{
+		"_id":             serverID,
+		"lock.is_running": false, // CRITICAL: This prevents double-hosting
+	}
+
+	// 2. The Update: Set running=true, host=me
+	update := bson.M{
+		"$set": bson.M{
+			"lock.is_running": true,
+			"lock.hosted_by":  username,
+			"lock.hosted_at":  time.Now(),
+			// Later we will add IP address here from Playit
+		},
+	}
+
+	// 3. Execute
+	result, err := collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return "Error: Database connection failed"
+	}
+	if result.ModifiedCount == 0 {
+		return "Error: Server is already running (Locked by someone else)!"
+	}
+
+	// TODO: In the future, this is where we trigger the File Sync & Game Launch
+	return "Success: Server Started!"
+}
+
+// StopServer releases the lock
+func (a *App) StopServer(serverID string, username string) string {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// 1. The Filter: Match ID AND ensure *I* am the host
+	filter := bson.M{
+		"_id":             serverID,
+		"lock.is_running": true,
+		"lock.hosted_by":  username, // Safety: Only the host can stop it
+	}
+
+	// 2. The Update: Set running=false
+	update := bson.M{
+		"$set": bson.M{
+			"lock.is_running": false,
+			"lock.hosted_by":  "",
+		},
+	}
+
+	result, err := collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return "Error: Database failed"
+	}
+	if result.ModifiedCount == 0 {
+		return "Error: You are not the host, or server is already stopped."
+	}
+
+	// TODO: In the future, this is where we trigger the Upload Sync
+	return "Success: Server Stopped!"
 }

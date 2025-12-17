@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { GetMyServers, CreateServer, JoinServer } from '../../wailsjs/go/backend/App'; // Import JoinServer
 import { useNavigate } from 'react-router-dom';
+import { GetMyServers, CreateServer, JoinServer, StartServer, StopServer } from '../../wailsjs/go/backend/App';
 
 export default function Dashboard() {
     const [servers, setServers] = useState([]);
@@ -31,6 +31,24 @@ export default function Dashboard() {
         alert(result); // Simple feedback
         setInviteCode("");
         loadServers();
+    };
+
+    const handleStart = async (serverId) => {
+        const result = await StartServer(serverId, currentUser);
+        if (result.startsWith("Error")) {
+            alert(result);
+        } else {
+            loadServers(); // Refresh to see the green light
+        }
+    };
+
+    const handleStop = async (serverId) => {
+        const result = await StopServer(serverId, currentUser);
+        if (result.startsWith("Error")) {
+            alert(result);
+        } else {
+            loadServers(); // Refresh to see the offline status
+        }
     };
 
     return (
@@ -77,23 +95,56 @@ export default function Dashboard() {
             {/* Server List */}
             <h2>Your Servers</h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "20px" }}>
-                {servers.map((server) => (
-                    <div key={server.id} style={styles.card}>
-                        <h3 style={{ margin: "0 0 10px 0" }}>{server.name}</h3>
-                        <div style={{ background: "rgba(0,0,0,0.3)", padding: "5px", borderRadius: "4px", fontSize: "0.85rem", marginBottom: "10px" }}>
-                            Invite Code: <span style={{ color: "#61dafb", userSelect: "all" }}>{server.invite_code}</span>
+                {servers.map((server) => {
+                    const isRunning = server.lock.is_running;
+                    const isMyServer = server.lock.hosted_by === currentUser;
+
+                    return (
+                        <div key={server.id} style={styles.card}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                                <div>
+                                    <h3 style={{ margin: "0 0 5px 0" }}>{server.name}</h3>
+                                    <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: "10px" }}>
+                                        ID: {server.invite_code}
+                                    </div>
+                                </div>
+                                {/* Status Badge */}
+                                <div style={{
+                                    padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold",
+                                    background: isRunning ? "rgba(81, 207, 102, 0.2)" : "rgba(255, 255, 255, 0.1)",
+                                    color: isRunning ? "#51cf66" : "#888"
+                                }}>
+                                    {isRunning ? "ONLINE" : "OFFLINE"}
+                                </div>
+                            </div>
+
+                            {/* The Control Center */}
+                            <div style={{ marginTop: "15px", paddingTop: "15px", borderTop: "1px solid #444" }}>
+                                {!isRunning && (
+                                    <button className="btn"
+                                        onClick={() => handleStart(server.id)}
+                                        style={{ width: "100%", background: "#228be6" }}>
+                                        Start Server
+                                    </button>
+                                )}
+
+                                {isRunning && isMyServer && (
+                                    <button className="btn"
+                                        onClick={() => handleStop(server.id)}
+                                        style={{ width: "100%", background: "#fa5252" }}>
+                                        Stop Server
+                                    </button>
+                                )}
+
+                                {isRunning && !isMyServer && (
+                                    <div style={{ textAlign: "center", color: "#ff6b6b", fontSize: "0.9rem" }}>
+                                        🔒 Locked by <b>{server.lock.hosted_by}</b>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <div style={{
-                                width: "10px", height: "10px", borderRadius: "50%",
-                                background: server.lock.is_running ? "#51cf66" : "#ff6b6b"
-                            }}></div>
-                            <span style={{ color: "#ccc", fontSize: "0.9rem" }}>
-                                {server.lock.is_running ? `Hosted by ${server.lock.hosted_by}` : "Offline"}
-                            </span>
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
