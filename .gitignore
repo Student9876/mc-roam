@@ -3,3 +3,4 @@ node_modules
 frontend/dist
 minecraft_server
 rclone.conf
+instances/*

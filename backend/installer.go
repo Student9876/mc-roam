@@ -9,43 +9,46 @@ import (
 )
 
 // InstallServer downloads the server and pushes it to the cloud
-func (a *App) InstallServer(version string) string {
-	serverDir := "./minecraft_server"
+// InstallServer downloads files and uploads them to a SERVER-SPECIFIC cloud folder
+func (a *App) InstallServer(serverID string) string {
 
-	// 1. WIPE OLD DATA
-	fmt.Println("🧹 Cleaning up old server files...")
-	os.RemoveAll(serverDir)
+	// 1. Calculate Paths (DYNAMICALLY)
+	localInstance := a.getInstancePath(serverID) // e.g., instances/srv_12345
+	remoteFolder := "server-" + serverID         // e.g., server-srv_12345 (Unique in Cloud!)
 
-	// 2. Re-create Directory
-	if err := os.MkdirAll(serverDir, 0755); err != nil {
+	// 2. WIPE OLD DATA (Local)
+	a.Log(fmt.Sprintf("🧹 Cleaning up instance files in %s...", localInstance))
+	os.RemoveAll(localInstance)
+
+	// 3. Re-create Directory
+	if err := os.MkdirAll(localInstance, 0755); err != nil {
 		return fmt.Sprintf("Error: Could not create folder: %v", err)
 	}
 
-	// 3. Download Server Jar (Paper 1.20.4)
+	// 4. Download Server Jar
 	downloadUrl := "https://api.papermc.io/v2/projects/paper/versions/1.20.4/builds/496/downloads/paper-1.20.4-496.jar"
 
-	fmt.Println("⬇️ Downloading Server Jar...")
-	err := downloadFile(downloadUrl, filepath.Join(serverDir, "server.jar"))
+	a.Log("⬇️ Downloading Server Jar...")
+	err := downloadFile(downloadUrl, filepath.Join(localInstance, "server.jar"))
 	if err != nil {
 		return fmt.Sprintf("Error: Download failed: %v", err)
 	}
 
-	// 4. Write Config Files
+	// 5. Write Config Files
 	eulaContent := "eula=true\n"
-	os.WriteFile(filepath.Join(serverDir, "eula.txt"), []byte(eulaContent), 0644)
+	os.WriteFile(filepath.Join(localInstance, "eula.txt"), []byte(eulaContent), 0644)
 
 	propsContent := "online-mode=false\nspawn-protection=0\n"
-	os.WriteFile(filepath.Join(serverDir, "server.properties"), []byte(propsContent), 0644)
+	os.WriteFile(filepath.Join(localInstance, "server.properties"), []byte(propsContent), 0644)
 
-	// --- NEW STEP: UPLOAD IMMEDIATELY ---
-	fmt.Println("🚀 Uploading new server to Cloud...")
-	// We reuse the SyncUp constant (assuming it's defined as 0 or 1 in your rclone.go)
-	// If 'SyncUp' is not visible here, check rclone.go package name is 'backend'
-	err = a.RunSync(SyncUp, "minecraft-server", serverDir)
+	// 6. UPLOAD TO SPECIFIC CLOUD FOLDER
+	a.Log(fmt.Sprintf("🚀 Uploading to Cloud Folder: %s...", remoteFolder))
+
+	// CRITICAL FIX: Use 'remoteFolder' variable, NOT "minecraft-server"
+	err = a.RunSync(SyncUp, remoteFolder, localInstance)
 	if err != nil {
 		return fmt.Sprintf("Error: Failed to upload to cloud: %v", err)
 	}
-	// ------------------------------------
 
 	return "Success: Server Installed & Uploaded!"
 }

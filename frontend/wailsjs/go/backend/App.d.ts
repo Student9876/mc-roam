@@ -4,9 +4,13 @@ import {backend} from '../models';
 
 export function AuthorizeDrive(arg1:string,arg2:string):Promise<string>;
 
-export function CheckCloudExists():Promise<boolean>;
+export function CheckCloudExists(arg1:string):Promise<boolean>;
+
+export function CleanLocks(arg1:string):Promise<void>;
 
 export function CreateServer(arg1:string,arg2:string,arg3:string):Promise<string>;
+
+export function ForceKillPort(arg1:number):Promise<void>;
 
 export function GetMyServers(arg1:string):Promise<Array<backend.ServerGroup>>;
 
@@ -20,14 +24,22 @@ export function JoinServer(arg1:string,arg2:string):Promise<string>;
 
 export function KillMinecraftServer():Promise<void>;
 
+export function KillZombie(arg1:string):Promise<void>;
+
+export function Log(arg1:string):Promise<void>;
+
 export function Login(arg1:string,arg2:string):Promise<string>;
 
 export function Register(arg1:string,arg2:string):Promise<string>;
 
-export function RunMinecraftServer():Promise<void>;
+export function RunMinecraftServer(arg1:string,arg2:number):Promise<void>;
 
 export function RunSync(arg1:backend.SyncDirection,arg2:string,arg3:string):Promise<void>;
 
 export function StartServer(arg1:string,arg2:string):Promise<string>;
 
 export function StopServer(arg1:string,arg2:string):Promise<string>;
+
+export function StopTunnel():Promise<void>;
+
+export function UpdateServerProperties(arg1:string,arg2:number):Promise<void>;

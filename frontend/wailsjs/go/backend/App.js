@@ -6,12 +6,20 @@ export function AuthorizeDrive(arg1, arg2) {
   return window['go']['backend']['App']['AuthorizeDrive'](arg1, arg2);
 }
 
-export function CheckCloudExists() {
-  return window['go']['backend']['App']['CheckCloudExists']();
+export function CheckCloudExists(arg1) {
+  return window['go']['backend']['App']['CheckCloudExists'](arg1);
+}
+
+export function CleanLocks(arg1) {
+  return window['go']['backend']['App']['CleanLocks'](arg1);
 }
 
 export function CreateServer(arg1, arg2, arg3) {
   return window['go']['backend']['App']['CreateServer'](arg1, arg2, arg3);
+}
+
+export function ForceKillPort(arg1) {
+  return window['go']['backend']['App']['ForceKillPort'](arg1);
 }
 
 export function GetMyServers(arg1) {
@@ -38,6 +46,14 @@ export function KillMinecraftServer() {
   return window['go']['backend']['App']['KillMinecraftServer']();
 }
 
+export function KillZombie(arg1) {
+  return window['go']['backend']['App']['KillZombie'](arg1);
+}
+
+export function Log(arg1) {
+  return window['go']['backend']['App']['Log'](arg1);
+}
+
 export function Login(arg1, arg2) {
   return window['go']['backend']['App']['Login'](arg1, arg2);
 }
@@ -46,8 +62,8 @@ export function Register(arg1, arg2) {
   return window['go']['backend']['App']['Register'](arg1, arg2);
 }
 
-export function RunMinecraftServer() {
-  return window['go']['backend']['App']['RunMinecraftServer']();
+export function RunMinecraftServer(arg1, arg2) {
+  return window['go']['backend']['App']['RunMinecraftServer'](arg1, arg2);
 }
 
 export function RunSync(arg1, arg2, arg3) {
@@ -60,4 +76,12 @@ export function StartServer(arg1, arg2) {
 
 export function StopServer(arg1, arg2) {
   return window['go']['backend']['App']['StopServer'](arg1, arg2);
+}
+
+export function StopTunnel() {
+  return window['go']['backend']['App']['StopTunnel']();
+}
+
+export function UpdateServerProperties(arg1, arg2) {
+  return window['go']['backend']['App']['UpdateServerProperties'](arg1, arg2);
 }

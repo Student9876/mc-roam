@@ -1,22 +1,46 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react'; // <--- Added useRef
 import { useNavigate } from 'react-router-dom';
+// 1. Backend Functions
 import { GetMyServers, CreateServer, JoinServer, StartServer, StopServer, AuthorizeDrive, InstallServer } from '../../wailsjs/go/backend/App';
+// 2. Runtime Functions (FIXED IMPORT)
+import { EventsOn } from '../../wailsjs/runtime/runtime';
 
 export default function Dashboard() {
     const [servers, setServers] = useState([]);
     const [newServerName, setNewServerName] = useState("");
-    const [inviteCode, setInviteCode] = useState(""); // New State
+    const [inviteCode, setInviteCode] = useState("");
     const [rcloneConf, setRcloneConf] = useState("");
-    const [isAuthorizing, setIsAuthorizing] = useState(false); // UI Loading state
+    const [isAuthorizing, setIsAuthorizing] = useState(false);
 
-    const [needsSetup, setNeedsSetup] = useState(false); // Controls the Install Modal
-    const [activeServerId, setActiveServerId] = useState(null); // Which server are we trying to start?
-    const [isInstalling, setIsInstalling] = useState(false); // Loading spinner for download
+    const [needsSetup, setNeedsSetup] = useState(false);
+    const [activeServerId, setActiveServerId] = useState(null);
+    const [isInstalling, setIsInstalling] = useState(false);
+
+    // --- NEW: LOGGING STATE ---
+    const [logs, setLogs] = useState([]);
+    const [activePort, setActivePort] = useState(null);
+    const logsEndRef = useRef(null);
+    // --------------------------
 
     const currentUser = sessionStorage.getItem("mc_username") || "Unknown";
     const navigate = useNavigate();
 
     useEffect(() => { loadServers() }, []);
+
+    // --- NEW: LIVE LOG LISTENER ---
+    useEffect(() => {
+        // Listen for "server-log" event from Go
+        const stopListening = EventsOn("server-log", (message) => {
+            setLogs((prev) => [...prev, message].slice(-200)); // Keep last 200 lines
+        });
+        return () => stopListening && stopListening(); // Cleanup (optional but good)
+    }, []);
+
+    // Auto-scroll to bottom of logs
+    useEffect(() => {
+        logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [logs]);
+    // ------------------------------
 
     const loadServers = async () => {
         const list = await GetMyServers(currentUser);
@@ -25,13 +49,11 @@ export default function Dashboard() {
 
     const handleAuthorize = async () => {
         setIsAuthorizing(true);
-        // Pass empty strings to use the hardcoded defaults in Go
         const configResult = await AuthorizeDrive("", "");
-
         if (configResult.startsWith("Error")) {
             alert(configResult);
         } else {
-            setRcloneConf(configResult); // Fill the hidden state
+            setRcloneConf(configResult);
         }
         setIsAuthorizing(false);
     };
@@ -46,33 +68,31 @@ export default function Dashboard() {
         loadServers();
     };
 
-    // New Function
     const handleJoin = async () => {
         if (!inviteCode) return;
         const result = await JoinServer(inviteCode, currentUser);
-        alert(result); // Simple feedback
+        alert(result);
         setInviteCode("");
         loadServers();
     };
 
     const handleStart = async (serverId) => {
-        // 1. First, check if the cloud has files
-        // (This assumes we already injected config. 
-        //  Wait... StartServer usually injects config. 
-        //  We might need to call StartServer, let it fail, and catch the error?
-        //  Actually, let's keep it simple: Let StartServer fail, return a specific error string.)
+        // Clear old logs when starting new server
+        setLogs([]);
+        setActivePort(null);
 
         const result = await StartServer(serverId, currentUser);
 
-        // CATCH THE "Directory not found" ERROR
-        if (result.includes("directory not found") || result.includes("setup required")) {
-            // Trigger Setup Mode!
+        if (result.startsWith("Success:")) {
+            // Format is "Success:25565"
+            const port = result.split(":")[1];
+            setActivePort(port);
+            loadServers();
+        } else if (result.includes("directory not found")) {
             setActiveServerId(serverId);
             setNeedsSetup(true);
-        } else if (result.startsWith("Error")) {
-            alert(result);
         } else {
-            loadServers();
+            alert(result);
         }
     };
 
@@ -81,26 +101,20 @@ export default function Dashboard() {
         if (result.startsWith("Error")) {
             alert(result);
         } else {
-            loadServers(); // Refresh to see the offline status
+            setActivePort(null);
+            loadServers();
         }
     };
 
-    // New Function: Run the Installer
     const handleInstall = async () => {
         setIsInstalling(true);
-        // 1. Install Files
-        const installRes = await InstallServer("1.20.4");
+        const installRes = await InstallServer(activeServerId);
         if (installRes.startsWith("Error")) {
             alert(installRes);
             setIsInstalling(false);
             return;
         }
-
-        // 2. Force a "Sync Up" to create the cloud folder
-        // We can cheat by calling StopServer (which triggers Sync Up)
         await StopServer(activeServerId, currentUser);
-
-        // 3. Close Modal and Refresh
         setIsInstalling(false);
         setNeedsSetup(false);
         alert("Installation Complete! You can now Start the server.");
@@ -118,54 +132,25 @@ export default function Dashboard() {
 
             {/* Action Bar */}
             <div style={{ display: "flex", gap: "20px", marginBottom: "2rem" }}>
-                {/* Create Box */}
                 <div style={styles.box}>
                     <h3>Create New</h3>
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "10px" }}>
-                        <input
-                            style={styles.input}
-                            placeholder="Server Name"
-                            value={newServerName}
-                            onChange={(e) => setNewServerName(e.target.value)}
-                        />
-
-                        {/* The Wizard UI */}
+                        <input style={styles.input} placeholder="Server Name" value={newServerName} onChange={(e) => setNewServerName(e.target.value)} />
                         {!rcloneConf ? (
-                            <button
-                                className="btn"
-                                onClick={handleAuthorize}
-                                disabled={isAuthorizing}
-                                style={{ background: isAuthorizing ? "#555" : "#fab005", color: "black" }}
-                            >
-                                {isAuthorizing ? "Check your Browser..." : "🔗 Connect Google Drive"}
+                            <button className="btn" onClick={handleAuthorize} disabled={isAuthorizing} style={{ background: isAuthorizing ? "#555" : "#fab005", color: "black" }}>
+                                {isAuthorizing ? "Check Browser..." : "🔗 Connect Google Drive"}
                             </button>
                         ) : (
-                            <div style={{ color: "#51cf66", fontSize: "0.9rem", textAlign: "center", border: "1px solid #51cf66", padding: "8px", borderRadius: "4px" }}>
-                                ✅ Drive Connected!
-                            </div>
+                            <div style={{ color: "#51cf66", textAlign: "center", border: "1px solid", padding: "8px" }}>✅ Drive Connected!</div>
                         )}
-
-                        <button
-                            className="btn"
-                            onClick={handleCreate}
-                            disabled={!rcloneConf} // Disable if not connected
-                            style={{ opacity: rcloneConf ? 1 : 0.5 }}
-                        >
-                            Create Server
-                        </button>
+                        <button className="btn" onClick={handleCreate} disabled={!rcloneConf} style={{ opacity: rcloneConf ? 1 : 0.5 }}>Create Server</button>
                     </div>
                 </div>
 
-                {/* Join Box */}
                 <div style={styles.box}>
                     <h3>Join Existing</h3>
                     <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                        <input
-                            style={styles.input}
-                            placeholder="Enter Invite Code"
-                            value={inviteCode}
-                            onChange={(e) => setInviteCode(e.target.value)}
-                        />
+                        <input style={styles.input} placeholder="Enter Invite Code" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} />
                         <button className="btn" onClick={handleJoin}>Join</button>
                     </div>
                 </div>
@@ -177,81 +162,58 @@ export default function Dashboard() {
                 {servers.map((server) => {
                     const isRunning = server.lock.is_running;
                     const isMyServer = server.lock.hosted_by === currentUser;
-
                     return (
                         <div key={server.id} style={styles.card}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
                                 <div>
                                     <h3 style={{ margin: "0 0 5px 0" }}>{server.name}</h3>
-                                    <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: "10px" }}>
-                                        ID: {server.invite_code}
-                                    </div>
+                                    <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: "10px" }}>ID: {server.invite_code}</div>
                                 </div>
-                                {/* Status Badge */}
-                                <div style={{
-                                    padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold",
-                                    background: isRunning ? "rgba(81, 207, 102, 0.2)" : "rgba(255, 255, 255, 0.1)",
-                                    color: isRunning ? "#51cf66" : "#888"
-                                }}>
+                                <div style={{ padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold", background: isRunning ? "rgba(81, 207, 102, 0.2)" : "rgba(255, 255, 255, 0.1)", color: isRunning ? "#51cf66" : "#888" }}>
                                     {isRunning ? "ONLINE" : "OFFLINE"}
                                 </div>
                             </div>
-
-                            {/* The Control Center */}
                             <div style={{ marginTop: "15px", paddingTop: "15px", borderTop: "1px solid #444" }}>
-                                {!isRunning && (
-                                    <button className="btn"
-                                        onClick={() => handleStart(server.id)}
-                                        style={{ width: "100%", background: "#228be6" }}>
-                                        Start Server
-                                    </button>
-                                )}
-
-                                {isRunning && isMyServer && (
-                                    <button className="btn"
-                                        onClick={() => handleStop(server.id)}
-                                        style={{ width: "100%", background: "#fa5252" }}>
-                                        Stop Server
-                                    </button>
-                                )}
-
-                                {isRunning && !isMyServer && (
-                                    <div style={{ textAlign: "center", color: "#ff6b6b", fontSize: "0.9rem" }}>
-                                        🔒 Locked by <b>{server.lock.hosted_by}</b>
-                                    </div>
-                                )}
+                                {!isRunning && <button className="btn" onClick={() => handleStart(server.id)} style={{ width: "100%", background: "#228be6" }}>Start Server</button>}
+                                {isRunning && isMyServer && <button className="btn" onClick={() => handleStop(server.id)} style={{ width: "100%", background: "#fa5252" }}>Stop Server</button>}
+                                {isRunning && !isMyServer && <div style={{ textAlign: "center", color: "#ff6b6b" }}>🔒 Locked by <b>{server.lock.hosted_by}</b></div>}
                             </div>
                         </div>
                     );
                 })}
             </div>
 
-            {/* INSTALLATION MODAL */}
+            {/* MODAL */}
             {needsSetup && (
-                <div style={{
-                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-                    background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center"
-                }}>
+                <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center" }}>
                     <div style={{ background: "#2a2a2a", padding: "2rem", borderRadius: "10px", textAlign: "center", maxWidth: "400px" }}>
                         <h2>🆕 New Server Detected</h2>
-                        <p>This server is empty. Would you like to install Minecraft (1.20.4)?</p>
-
+                        <p>This server is empty. Install Minecraft?</p>
                         <div style={{ marginTop: "20px", display: "flex", gap: "10px", justifyContent: "center" }}>
-                            <button className="btn"
-                                onClick={() => setNeedsSetup(false)}
-                                style={{ background: "#444" }}>
-                                Cancel
-                            </button>
-                            <button className="btn"
-                                onClick={handleInstall}
-                                disabled={isInstalling}
-                                style={{ background: "#fab005", color: "black" }}>
-                                {isInstalling ? "Downloading..." : "⬇️ Install & Fix"}
-                            </button>
+                            <button className="btn" onClick={() => setNeedsSetup(false)} style={{ background: "#444" }}>Cancel</button>
+                            <button className="btn" onClick={handleInstall} disabled={isInstalling} style={{ background: "#fab005", color: "black" }}>{isInstalling ? "Downloading..." : "⬇️ Install & Fix"}</button>
                         </div>
                     </div>
                 </div>
             )}
+
+            {/* --- SERVER ADDRESS BAR --- */}
+            {activePort && (
+                <div style={{ background: "#2ecc71", padding: "15px", marginTop: "20px", borderRadius: "8px", color: "black", fontWeight: "bold", textAlign: "center" }}>
+                    🚀 Server Running at: <span style={{ fontSize: "1.2rem", background: "white", padding: "2px 8px", borderRadius: "4px", marginLeft: "10px" }}>localhost:{activePort}</span>
+                </div>
+            )}
+
+            {/* --- LIVE TERMINAL --- */}
+            <div style={{ marginTop: "20px", background: "#1e1e1e", borderRadius: "8px", padding: "10px", height: "200px", overflowY: "auto", fontFamily: "monospace", fontSize: "0.8rem", border: "1px solid #444", boxShadow: "inset 0 0 10px #000" }}>
+                <div style={{ color: "#888", marginBottom: "5px" }}>_ TERMINAL OUTPUT</div>
+                {logs.map((log, index) => (
+                    <div key={index} style={{ color: log.includes("Error") ? "#ff6b6b" : "#dfe6e9", whiteSpace: "pre-wrap" }}>
+                        {log.startsWith("[MC]") ? <span style={{ color: "#fab005" }}>{log}</span> : log}
+                    </div>
+                ))}
+                <div ref={logsEndRef} />
+            </div>
         </div>
     );
 }

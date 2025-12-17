@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings" // Add this to imports at top!
 	"time"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"go.mongodb.org/mongo-driver/bson"  // Add this
 	"go.mongodb.org/mongo-driver/mongo" // Add this
 	"golang.org/x/crypto/bcrypt"        // Add this
@@ -33,7 +35,7 @@ func (a *App) Startup(ctx context.Context) {
 
 	_, err := ConnectDB(connStr)
 	if err != nil {
-		fmt.Printf("❌ CRITICAL: Database connection failed: %v\n", err)
+		a.Log(fmt.Sprintf("❌ CRITICAL: Database connection failed: %v", err))
 	}
 	// --------------------------------
 }
@@ -194,26 +196,29 @@ func (a *App) JoinServer(inviteCode string, username string) string {
 
 // --- POWER MANAGEMENT METHODS ---
 
+// StartServer attempts to acquire the lock and launch the specific instance
+// Add this helper if you haven't already
+func (a *App) Log(message string) {
+	fmt.Println(message) // Print to VS Code
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "server-log", message) // Send to Frontend
+	}
+}
+
 // StartServer attempts to acquire the lock for a server
 func (a *App) StartServer(serverID string, username string) string {
 	collection := DB.Client.Database("mc_roam").Collection("servers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// 1. The Filter (Existing code...)
-	filter := bson.M{"_id": serverID, "lock.is_running": false}
-
-	// --- NEW: FETCH CONFIG FIRST ---
+	// 1. Fetch Config First
 	var serverDoc ServerGroup
-	// We need to find the doc to get the RcloneConfig string
-	// Note: This is a separate read before the write.
-	// Ideally we do this atomically, but for now this is fine.
 	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&serverDoc)
 	if err != nil {
 		return "Error: Server not found."
 	}
 
-	// INJECT THE CONFIG!
+	// 2. Inject Config
 	if serverDoc.RcloneConfig == "" {
 		return "Error: This server has no Cloud Config set up!"
 	}
@@ -221,19 +226,16 @@ func (a *App) StartServer(serverID string, username string) string {
 	if err != nil {
 		return "Error: Failed to inject cloud keys."
 	}
-	// -------------------------------
 
-	// 2. The Update: Set running=true, host=me
+	// 3. Lock the Database
+	filter := bson.M{"_id": serverID, "lock.is_running": false}
 	update := bson.M{
 		"$set": bson.M{
 			"lock.is_running": true,
 			"lock.hosted_by":  username,
 			"lock.hosted_at":  time.Now(),
-			// Later we will add IP address here from Playit
 		},
 	}
-
-	// 3. Execute
 	result, err := collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return "Error: Database connection failed"
@@ -242,98 +244,97 @@ func (a *App) StartServer(serverID string, username string) string {
 		return "Error: Server is already running (Locked by someone else)!"
 	}
 
-	if result.ModifiedCount == 0 {
-		return "Error: Server is already running!"
-	}
+	// --- PATH CALCULATION ---
+	localInstance := a.getInstancePath(serverID)
+	remoteFolder := "server-" + serverID
 
-	// --- NEW: PRE-CHECK CLOUD STATUS ---
-	// Before we try to Sync, check if the folder even exists.
-	if !a.CheckCloudExists() {
-		// Folder is missing! This is a new server.
-		// 1. Unlock the database so the UI doesn't get stuck
+	// 4. Pre-Check Cloud Status
+	if !a.CheckCloudExists(remoteFolder) {
 		a.forceUnlock(serverID)
-
-		// 2. Return the specific error keyword the Frontend is waiting for
 		return "Error: directory not found (setup required)"
 	}
-	// -----------------------------------
-	// --- NEW: TRIGGER SYNC ---
-	// 1. Ensure local world folder exists
-	localServer := "./minecraft_server"
-	EnsureLocalFolder(localServer)
 
-	// 2. Pull data from Cloud (Sync Down)
-	// We are syncing the 'world' folder from the remote
-	err = a.RunSync(SyncDown, "minecraft-server", localServer)
+	// 5. Trigger Sync Down
+	a.Log("🔄 Syncing (down)...")
+	// Clean locks BEFORE sync to avoid Access Denied errors
+	a.CleanLocks(localInstance)
+
+	err = a.RunSync(SyncDown, remoteFolder, localInstance)
 	if err != nil {
-		a.StopServer(serverID, username)
+		a.forceUnlock(serverID)
 		return fmt.Sprintf("Error: Sync failed: %v", err)
 	}
 
-	
-	// --- NEW: LAUNCH THE GAME ---
-	err = a.RunMinecraftServer()
+	// --- NEW: PICK DYNAMIC PORT ---
+	port, err := GetFreePort()
 	if err != nil {
-		// If launch fails, we must upload changes (if any) and unlock
-		a.StopServer(serverID, username)
-		return fmt.Sprintf("Error: Failed to launch server.jar: %v", err)
+		a.Log("⚠️ Could not find free port, defaulting to 25565")
+		port = 25565
 	}
 
-	return "Success: Server Started & Running!"
+	// 6. Launch Game with specific Port
+	err = a.RunMinecraftServer(localInstance, port)
+	if err != nil {
+		a.StopServer(serverID, username)
+		return fmt.Sprintf("Error: Failed to launch: %v", err)
+	}
+
+	// 7. Start Tunnel (Optional)
+	// a.StartTunnel(localInstance)
+
+	// Return the port to the UI
+	return fmt.Sprintf("Success:%d", port)
 }
 
-// StopServer syncs data BACK to cloud, then releases the lock
+// StopServer syncs data BACK to the specific cloud folder
 func (a *App) StopServer(serverID string, username string) string {
 
-	// 1. Kill the process first!
+	// Paths
+	localInstance := a.getInstancePath(serverID)
+	remoteFolder := "server-" + serverID
+
+	// 1. Kill Process & Tunnel
 	a.KillMinecraftServer()
-	// Give it a second to release file locks
-	time.Sleep(2 * time.Second)
+	a.StopTunnel()
+	time.Sleep(2 * time.Second) // Wait for file locks to release
 
 	collection := DB.Client.Database("mc_roam").Collection("servers")
-	// Give it 10 minutes to upload large files before giving up on the DB update
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	// 1. Verify we are the host
+	// 2. Verify Host
 	filter := bson.M{
 		"_id":             serverID,
 		"lock.is_running": true,
 		"lock.hosted_by":  username,
 	}
-
-	// Check existence before we do the heavy lifting
-	var result ServerGroup
-	err := collection.FindOne(ctx, filter).Decode(&result)
+	var doc ServerGroup
+	err := collection.FindOne(ctx, filter).Decode(&doc)
 	if err != nil {
 		return "Error: You are not the host, or server is already stopped."
 	}
 
-	// --- NEW: TRIGGER SYNC UP (PUSH) ---
-	localServer := "./minecraft_server"
+	// 3. Sync Up (Push)
+	// Check if the instance folder exists locally
+	if _, err := os.Stat(localInstance); err == nil {
+		a.Log("🚀 Starting Upload (Sync Up)...")
 
-	// Check if world actually exists before trying to upload
-	if _, err := os.Stat(localServer); err == nil {
-		fmt.Println("🚀 Starting Upload (Sync Up)...")
-
-		// Run Rclone: Local -> Cloud
-		err = a.RunSync(SyncUp, "minecraft-server", localServer)
+		// Syncing: ./instances/123 -> server-123 (Cloud)
+		err = a.RunSync(SyncUp, remoteFolder, localInstance)
 		if err != nil {
 			return fmt.Sprintf("Error: Upload failed! Data NOT saved. (%v)", err)
 		}
-		fmt.Println("✅ Upload Complete!")
+		a.Log("✅ Upload Complete!")
 	}
-	// -----------------------------------
 
-	// 2. Release the Lock (Only after sync succeeds!)
+	// 4. Release Lock
 	update := bson.M{
 		"$set": bson.M{
 			"lock.is_running": false,
 			"lock.hosted_by":  "",
-			"lock.hosted_at":  time.Time{}, // Reset time
+			"lock.hosted_at":  time.Time{},
 		},
 	}
-
 	_, err = collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return "Error: Database update failed (but files were synced!)"
@@ -399,12 +400,13 @@ token = %s
 	return fmt.Sprintf(configTemplate, clientID, clientSecret, tokenJSON)
 }
 
-// CheckCloudExists checks if the 'minecraft-server' folder exists in the cloud
-func (a *App) CheckCloudExists() bool {
-	// Must check the specific SUBFOLDER
-	cmd := exec.Command("./rclone.exe", "lsd", "mc-remote:minecraft-server", "--config", "./rclone.conf")
+// Update this function to accept the folder name!
+func (a *App) CheckCloudExists(folderName string) bool {
+	// Construct the path: mc-remote:server-12345
+	fullPath := "mc-remote:" + folderName
+	cmd := exec.Command("./rclone.exe", "lsd", fullPath, "--config", "./rclone.conf")
 	if err := cmd.Run(); err != nil {
-		return false // Command failed = Folder not found
+		return false
 	}
 	return true
 }
@@ -424,4 +426,15 @@ func (a *App) forceUnlock(serverID string) {
 		},
 	}
 	collection.UpdateOne(ctx, filter, update)
+}
+
+// StopTunnel stops the tunnel process
+func (a *App) StopTunnel() error {
+	// TODO: Implement tunnel stop logic (e.g., kill ngrok or cloudflare process)
+	return nil
+}
+
+// getInstancePath generates a unique folder for each server locally
+func (a *App) getInstancePath(serverID string) string {
+	return filepath.Join("instances", serverID)
 }

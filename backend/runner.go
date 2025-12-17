@@ -3,62 +3,174 @@ package backend
 import (
 	"bufio"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 )
 
-// Global variable to hold the running Minecraft process
-// In a production app, we might map ServerID -> Process if allowing multiple servers.
+// Global variable for the current session
 var activeCmd *exec.Cmd
 
-// RunMinecraftServer launches the server.jar
-func (a *App) RunMinecraftServer() error {
-	serverDir := "./minecraft_server"
-	jarName := "server.jar" // We assume the user named it this
+// GetFreePort asks the OS for a random free port
+func GetFreePort() (int, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return 0, err
+	}
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
+}
 
-	// 1. check if jar exists
-	if _, err := os.Stat(filepath.Join(serverDir, jarName)); os.IsNotExist(err) {
-		return fmt.Errorf("server.jar not found in %s", serverDir)
+// UpdateServerProperties forces the server-port setting
+func (a *App) UpdateServerProperties(serverDir string, port int) error {
+	propsPath := filepath.Join(serverDir, "server.properties")
+	content, err := os.ReadFile(propsPath)
+	if err != nil {
+		return err // Might not exist yet, that's fine
 	}
 
-	// 2. Prepare the command: java -Xmx2G -Xms2G -jar server.jar nogui
-	// You can make RAM configurable later!
-	cmd := exec.Command("java", "-Xmx2G", "-Xms2G", "-jar", jarName, "nogui")
-	cmd.Dir = serverDir // Important: Run inside the folder
+	lines := strings.Split(string(content), "\n")
+	var newLines []string
+	found := false
 
-	// 3. Pipe the output (Stdout/Stderr) so we can see it
-	// For now, we print to VS Code terminal. Later we send to Frontend.
-	cmdReader, _ := cmd.StdoutPipe()
-	scanner := bufio.NewScanner(cmdReader)
-	go func() {
-		for scanner.Scan() {
-			fmt.Printf("[MC]: %s\n", scanner.Text())
-			// TODO: a.runtime.EventsEmit("console_log", scanner.Text())
+	for _, line := range lines {
+		if strings.HasPrefix(line, "server-port=") {
+			newLines = append(newLines, fmt.Sprintf("server-port=%d", port))
+			found = true
+		} else if strings.HasPrefix(line, "query.port=") {
+			newLines = append(newLines, fmt.Sprintf("query.port=%d", port))
+		} else {
+			newLines = append(newLines, line)
 		}
-	}()
+	}
+	if !found {
+		newLines = append(newLines, fmt.Sprintf("server-port=%d", port))
+	}
+	return os.WriteFile(propsPath, []byte(strings.Join(newLines, "\n")), 0644)
+}
 
-	cmd.Stderr = cmd.Stdout // Capture errors too
+// ForceKillPort finds any process listening on the given port and kills it
+func (a *App) ForceKillPort(port int) {
+	// Command: netstat -ano | findstr :<PORT>
+	cmd := exec.Command("cmd", "/C", fmt.Sprintf("netstat -ano | findstr :%d", port))
+	output, err := cmd.CombinedOutput()
 
-	// 4. Start the process
+	if err != nil || len(output) == 0 {
+		return // Port is free
+	}
+
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		parts := strings.Fields(line)
+		// Look for lines ending with PID
+		if len(parts) >= 5 && strings.Contains(parts[1], fmt.Sprintf(":%d", port)) {
+			pidStr := parts[len(parts)-1]
+			pid, err := strconv.Atoi(pidStr)
+			if err == nil && pid > 0 {
+				a.Log(fmt.Sprintf("☢️ Port %d is occupied by PID %d. Killing it...", port, pid))
+				exec.Command("taskkill", "/F", "/PID", pidStr).Run()
+			}
+		}
+	}
+	time.Sleep(1 * time.Second) // Wait for release
+}
+
+// RunMinecraftServer launches the server on a dynamic port and streams logs
+func (a *App) RunMinecraftServer(serverDir string, port int) error {
+	// 1. NUCLEAR CLEANUP
+	a.ForceKillPort(port) // Ensure the new port is actually free
+	a.CleanLocks(serverDir)
+
+	// 2. Set Port in Config
+	err := a.UpdateServerProperties(serverDir, port)
+	if err != nil {
+		a.Log(fmt.Sprintf("⚠️ Failed to update port: %v", err))
+	}
+
+	jarName := "server.jar"
+	if _, err := os.Stat(filepath.Join(serverDir, jarName)); os.IsNotExist(err) {
+		return fmt.Errorf("server.jar not found")
+	}
+
+	// 3. Command
+	cmd := exec.Command("java", "-Xmx2G", "-Xms2G", "-jar", jarName, "nogui")
+	cmd.Dir = serverDir
+
+	// 4. LOG STREAMING MAGIC
+	stdout, _ := cmd.StdoutPipe()
+	cmd.Stderr = cmd.Stdout // Merge errors into stdout
+
 	if err := cmd.Start(); err != nil {
 		return err
 	}
 
-	activeCmd = cmd
-	fmt.Println("✅ Minecraft Server Launched!")
+	// Read logs in background and send to Frontend
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			text := scanner.Text()
+			a.Log("[MC]: " + text)
+		}
+	}()
 
-	// 5. Wait for it to finish (in a goroutine so we don't block the UI)
+	activeCmd = cmd
+	a.Log(fmt.Sprintf("✅ Minecraft Server Started on Port %d (PID: %d)", port, cmd.Process.Pid))
+
+	// 5. Save PID
+	pidFile := filepath.Join(serverDir, "server.pid")
+	os.WriteFile(pidFile, []byte(strconv.Itoa(cmd.Process.Pid)), 0644)
+
 	go func() {
 		cmd.Wait()
-		fmt.Println("🛑 Minecraft Server Exited.")
+		a.Log("🛑 Minecraft Server Exited.")
 		activeCmd = nil
+		os.Remove(pidFile)
 	}()
 
 	return nil
 }
 
-// KillMinecraftServer forcefully stops the process
+// KillZombie reads the pid file and forces the process to die
+func (a *App) KillZombie(serverDir string) {
+	pidPath := filepath.Join(serverDir, "server.pid")
+	data, err := os.ReadFile(pidPath)
+	if err != nil {
+		return
+	}
+	pid, err := strconv.Atoi(string(data))
+	if err != nil {
+		return
+	}
+	process, err := os.FindProcess(pid)
+	if err == nil {
+		a.Log(fmt.Sprintf("🧟 Found Zombie Process (PID: %d). Killing it...", pid))
+		process.Kill()
+		process.Wait()
+		time.Sleep(1 * time.Second)
+	}
+	os.Remove(pidPath)
+}
+
+// CleanLocks deletes files that cause "FileSystemException"
+func (a *App) CleanLocks(serverDir string) {
+	targets := []string{
+		filepath.Join(serverDir, "world", "session.lock"),
+		filepath.Join(serverDir, "logs", "latest.log"),
+	}
+	for _, path := range targets {
+		os.Remove(path)
+	}
+}
+
+// KillMinecraftServer (Manual Stop from UI)
 func (a *App) KillMinecraftServer() error {
 	if activeCmd != nil && activeCmd.Process != nil {
 		return activeCmd.Process.Kill()

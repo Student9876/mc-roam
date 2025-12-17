@@ -37,7 +37,7 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 		dest = remoteName
 	}
 
-	fmt.Printf("🔄 Syncing (%s): %s -> %s\n", direction, source, dest)
+	a.Log(fmt.Sprintf("🔄 Syncing (%s): %s -> %s", direction, source, dest))
 
 	// 3. The Command: Add --config flag
 	// This forces Rclone to use the credentials we just injected
