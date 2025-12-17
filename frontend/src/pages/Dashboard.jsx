@@ -127,41 +127,32 @@ export default function Dashboard() {
         <div style={styles.container}>
             {/* SIDEBAR */}
             <div style={styles.sidebar}>
-                <h2 style={{ marginBottom: "2rem", color: "#fab005" }}>MC Roam</h2>
+                <h2 style={{ marginBottom: "1rem", color: "#fab005", fontSize: "1.3rem" }}>MC Roam</h2>
+
+                {/* User Info at Top */}
+                <div style={styles.userSection}>
+                    <div style={{ fontSize: "0.7rem", color: "#666", marginBottom: "2px" }}>Logged in as</div>
+                    <div style={{ fontWeight: "bold", fontSize: "0.85rem", marginBottom: "0", wordBreak: "break-word", color: "#fab005" }}>{currentUser}</div>
+                </div>
 
                 <nav style={styles.nav}>
                     <button style={view === "dashboard" ? styles.navBtnActive : styles.navBtn} onClick={() => setView("dashboard")}>
-                        📂 My Servers
+                        📂 Servers
                     </button>
                     <button style={view === "create" ? styles.navBtnActive : styles.navBtn} onClick={() => setView("create")}>
-                        ➕ Create New
+                        ➕ Create
                     </button>
                     <button style={view === "join" ? styles.navBtnActive : styles.navBtn} onClick={() => setView("join")}>
-                        🔗 Join Server
+                        🔗 Join
+                    </button>
+                    <button onClick={() => { sessionStorage.clear(); navigate("/"); }} style={styles.logoutBtn}>
+                        Logout
                     </button>
                 </nav>
-
-                <div style={styles.userSection}>
-                    <div style={{ fontSize: "0.9rem", color: "#888" }}>Logged in as</div>
-                    <div style={{ fontWeight: "bold", marginBottom: "10px" }}>{currentUser}</div>
-                    <button onClick={() => { sessionStorage.clear(); navigate("/"); }} style={styles.logoutBtn}>Logout</button>
-                </div>
             </div>
 
             {/* MAIN CONTENT AREA */}
             <div style={styles.content}>
-
-                {/* STATUS BAR (If Server Running) */}
-                {(activePort || publicAddress) && (
-                    <div style={styles.statusBar}>
-                        <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
-                            <span style={{ fontSize: "1.2rem" }}>🚀 <b>Server Online</b></span>
-                            {activePort && <code style={styles.ipTag}>localhost:{activePort}</code>}
-                            {publicAddress && <code style={styles.ipTagPublic}>{publicAddress}</code>}
-                        </div>
-                        <button onClick={() => handleStop(servers.find(s => s.lock.is_running)?.id)} style={styles.miniStopBtn}>Stop Server</button>
-                    </div>
-                )}
 
                 {/* DYNAMIC VIEWS */}
                 {view === "dashboard" && (
@@ -254,29 +245,30 @@ export default function Dashboard() {
 
 // Styles
 const styles = {
-    container: { display: "flex", height: "100vh", background: "#121212", color: "#e0e0e0", fontFamily: "'Inter', sans-serif" },
-    sidebar: { width: "250px", background: "#1a1a1a", padding: "2rem", display: "flex", flexDirection: "column", borderRight: "1px solid #333" },
-    content: { flex: 1, padding: "3rem", overflowY: "auto", paddingBottom: "220px" },
-    nav: { display: "flex", flexDirection: "column", gap: "10px", flex: 1 },
-    navBtn: { background: "transparent", border: "none", color: "#888", padding: "10px", textAlign: "left", cursor: "pointer", fontSize: "1rem", borderRadius: "6px" },
-    navBtnActive: { background: "#333", border: "none", color: "#fff", padding: "10px", textAlign: "left", cursor: "pointer", fontSize: "1rem", borderRadius: "6px", fontWeight: "bold" },
-    userSection: { borderTop: "1px solid #333", paddingTop: "20px" },
-    logoutBtn: { background: "#c92a2a", color: "white", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "0.8rem" },
+    container: { display: "flex", height: "100vh", width: "100vw", background: "#121212", color: "#e0e0e0", fontFamily: "'Inter', sans-serif", minWidth: "900px", overflow: "hidden", position: "relative" },
+    sidebar: { width: "180px", minWidth: "180px", flexShrink: 0, background: "#1a1a1a", padding: "1.5rem 1rem", display: "flex", flexDirection: "column", borderRight: "1px solid #333", overflow: "hidden" },
+    content: { flex: 1, padding: "1.5rem", overflowY: "auto", overflowX: "hidden", paddingBottom: "180px", width: "calc(100vw - 180px)", boxSizing: "border-box" },
+    nav: { display: "flex", flexDirection: "column", gap: "8px" },
+    navBtn: { background: "transparent", border: "none", color: "#888", padding: "8px", textAlign: "left", cursor: "pointer", fontSize: "0.9rem", borderRadius: "6px" },
+    navBtnActive: { background: "#333", border: "none", color: "#fff", padding: "8px", textAlign: "left", cursor: "pointer", fontSize: "0.9rem", borderRadius: "6px", fontWeight: "bold" },
+    userSection: { borderBottom: "1px solid #333", paddingBottom: "12px", marginBottom: "12px" },
+    logoutBtn: { background: "#c92a2a", color: "white", border: "none", padding: "8px", borderRadius: "6px", cursor: "pointer", fontSize: "0.85rem", width: "100%", marginTop: "8px" },
 
     // Components
-    pageTitle: { fontSize: "1.8rem", marginBottom: "2rem", borderBottom: "1px solid #333", paddingBottom: "10px" },
+    pageTitle: { fontSize: "1.5rem", marginBottom: "1.5rem", borderBottom: "1px solid #333", paddingBottom: "10px" },
     grid: { 
         display: "grid", 
-        gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", // Reduced from 300px
-        gap: "20px",
-        maxWidth: "100%" // Ensure grid doesn't overflow
+        gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+        gap: "1.5rem",
+        width: "100%",
+        boxSizing: "border-box"
     },
 
     // Status Bar
-    statusBar: { background: "#1e1e1e", border: "1px solid #333", padding: "15px 25px", borderRadius: "8px", marginBottom: "30px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" },
-    ipTag: { background: "#2b2b2b", padding: "4px 8px", borderRadius: "4px", fontFamily: "monospace", color: "#69db7c", border: "1px solid #69db7c" },
-    ipTagPublic: { background: "#2b2b2b", padding: "4px 8px", borderRadius: "4px", fontFamily: "monospace", color: "#fab005", border: "1px solid #fab005" },
-    miniStopBtn: { background: "#fa5252", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" },
+    statusBar: { background: "#1e1e1e", border: "1px solid #333", padding: "12px 20px", borderRadius: "8px", marginBottom: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.2)", flexWrap: "wrap", gap: "10px" },
+    ipTag: { background: "#2b2b2b", padding: "4px 8px", borderRadius: "4px", fontFamily: "monospace", fontSize: "0.85rem", color: "#69db7c", border: "1px solid #69db7c" },
+    ipTagPublic: { background: "#2b2b2b", padding: "4px 8px", borderRadius: "4px", fontFamily: "monospace", fontSize: "0.85rem", color: "#fab005", border: "1px solid #fab005" },
+    miniStopBtn: { background: "#fa5252", color: "white", border: "none", padding: "6px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", fontSize: "0.85rem" },
 
     // Forms
     primaryBtn: { background: "#fab005", color: "black", border: "none", padding: "10px 20px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" },

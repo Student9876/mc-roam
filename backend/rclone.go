@@ -18,69 +18,76 @@ const (
 
 // RunSync executes the Rclone command and streams output to UI
 func (a *App) RunSync(direction SyncDirection, remotePath string, localPath string) error {
-	// 1. Where is the rclone executable?
 	rcloneBin := "./rclone.exe"
-
-	// 2. Define source and destination
 	var source, dest string
 	remoteName := "mc-remote:" + remotePath
+
+	// Prepare user-friendly messages
+	var logMsg string
+	var statusMsg string
 
 	if direction == SyncDown {
 		source = remoteName
 		dest = localPath
+		logMsg = "⬇️ STARTING DOWNLOAD: Cloud ➔ Local"
+		statusMsg = "[Sync]: STATUS: ⬇️ Downloading Server Data... DO NOT CLOSE!"
 	} else {
 		source = localPath
 		dest = remoteName
+		logMsg = "☁️ STARTING UPLOAD: Local ➔ Cloud"
+		statusMsg = "[Sync]: STATUS: ☁️ Uploading Server Data... DO NOT CLOSE!"
 	}
 
-	a.Log(fmt.Sprintf("🔄 Syncing (%s)...", direction))
+	// 1. Log to Main Terminal (Permanent History)
+	a.Log(logMsg)
+	a.Log("⚠️ DO NOT CLOSE THE APP OR TURN OFF PC")
+
+	// 2. Trigger Sticky Footer Immediately (Transient Status)
+	a.Log(statusMsg)
 
 	// 3. The Command
 	args := []string{
 		"sync", source, dest,
 		"--progress",
-		"--transfers", "8", // Speed up small file transfers
+		"--transfers", "8",
 		"--create-empty-src-dirs",
 		"--config", "./rclone.conf",
 		"--exclude", "session.lock",
-		"--exclude", "logs/**", // Skip logs
-		"--exclude", "cache/**", // Skip cache
-		"--exclude", "libraries/**", // Skip libraries
-		"--exclude", "versions/**", // Skip version data
-		"--exclude", "crash-reports/**", // Skip crash reports
+		"--exclude", "logs/**",
+		"--exclude", "cache/**",
+		"--exclude", "libraries/**",
+		"--exclude", "versions/**",
+		"--exclude", "crash-reports/**",
 	}
 
 	cmd := exec.Command(rcloneBin, args...)
-
-	// Windows-specific: Hide the flashing console window
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
-	// 4. CAPTURE OUTPUT
-	// We combine Stdout and Stderr to catch both progress and errors
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
 	cmd.Stderr = cmd.Stdout
 
-	// 5. Start
 	if err := cmd.Start(); err != nil {
 		return err
 	}
 
-	// 6. Stream Logs to UI (Line by Line)
-	// This makes the "Transferring..." lines appear in your black terminal box
 	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
 		text := scanner.Text()
-		// Optional: Filter out super noisy lines if you want,
-		// but for now, seeing the progress is satisfying.
 		a.Log("[Sync]: " + text)
 	}
 
-	// 7. Wait for finish
 	if err := cmd.Wait(); err != nil {
 		return fmt.Errorf("sync failed: %w", err)
+	}
+
+	// 3. Success Message
+	if direction == SyncDown {
+		a.Log("✅ Download Complete. Starting Server...")
+	} else {
+		a.Log("✅ Upload Complete. Server Safe.")
 	}
 
 	return nil

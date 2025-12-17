@@ -11,13 +11,25 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
 
     // State for toggling invite code visibility
     const [showInvite, setShowInvite] = useState(false);
-    const [copied, setCopied] = useState(false);
+    const [copiedInvite, setCopiedInvite] = useState(false);
+    const [copiedAddress, setCopiedAddress] = useState(false);
 
-    const handleCopy = (text) => {
+    const handleCopy = (text, event, type) => {
         if (!text) return;
+        // Prevent event bubbling to parent elements
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
         navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000); // Reset after 2s
+        
+        if (type === 'invite') {
+            setCopiedInvite(true);
+            setTimeout(() => setCopiedInvite(false), 2000);
+        } else if (type === 'address') {
+            setCopiedAddress(true);
+            setTimeout(() => setCopiedAddress(false), 2000);
+        }
     };
 
     // Helper to format the address (Use public address if available, else localhost)
@@ -37,54 +49,58 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
             position: 'relative'
         },
         headerStrip: {
-            height: '8px',
+            height: '6px',
             background: isRunning
                 ? 'linear-gradient(90deg, #40c057, #82c91e)' // Green when running
                 : 'linear-gradient(90deg, #fab005, #fd7e14)', // Orange when offline
             width: '100%'
         },
         content: {
-            padding: '24px',
+            padding: '16px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '20px'
+            gap: '12px'
         },
         headerRow: {
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'start'
+            alignItems: 'start',
+            gap: '8px'
         },
         title: {
-            fontSize: '1.4rem',
+            fontSize: '1.1rem',
             fontWeight: '700',
             color: '#fff',
-            margin: '0 0 5px 0'
+            margin: '0 0 4px 0',
+            wordBreak: 'break-word'
         },
         ownerTag: {
-            fontSize: '0.75rem',
+            fontSize: '0.65rem',
             color: '#666',
             background: '#252525',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            marginTop: '5px',
+            padding: '2px 5px',
+            borderRadius: '3px',
+            marginTop: '3px',
             display: 'inline-block'
         },
         iconGroup: {
             display: 'flex',
-            gap: '8px'
+            gap: '6px'
         },
         iconBtn: {
             background: '#2a2a2a',
             border: '1px solid #444',
             color: '#ccc',
-            width: '32px',
-            height: '32px',
-            borderRadius: '8px',
+            width: '28px',
+            height: '28px',
+            borderRadius: '6px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            fontSize: '0.9rem',
+            fontWeight: 'bold'
         },
         deleteBtn: {
             color: '#fa5252',
@@ -93,8 +109,8 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
         },
         infoBlock: {
             background: '#252525',
-            padding: '12px',
-            borderRadius: '10px',
+            padding: '8px',
+            borderRadius: '8px',
             border: '1px solid #333',
             display: 'flex',
             flexDirection: 'column',
@@ -104,36 +120,76 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            fontSize: '0.9rem',
-            color: '#aaa'
+            fontSize: '0.8rem',
+            gap: '8px'
+        },
+        infoLabel: {
+            color: '#888',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontSize: '0.65rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.3px',
+            minWidth: '80px',
+            flexShrink: 0
+        },
+        infoValue: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            flex: 1,
+            justifyContent: 'flex-end'
         },
         codeBlur: {
             fontFamily: 'monospace',
             background: '#1a1a1a',
-            padding: '4px 8px',
+            padding: '4px 6px',
             borderRadius: '4px',
             color: showInvite ? '#fab005' : '#555',
             cursor: 'pointer',
             userSelect: 'none',
-            border: '1px dashed #444'
+            border: '1px dashed #444',
+            fontSize: '0.75rem',
+            minWidth: '70px',
+            textAlign: 'center'
         },
-        copySmall: {
-            fontSize: '0.8rem',
-            cursor: 'pointer',
+        addressBox: {
+            fontFamily: 'monospace',
+            background: '#1a1a1a',
+            padding: '4px 6px',
+            borderRadius: '4px',
+            color: '#40c057',
+            fontSize: '0.75rem',
+            border: '1px solid rgba(64, 192, 87, 0.3)',
+            wordBreak: 'break-all',
+            maxWidth: '140px'
+        },
+        copyBtn: {
+            background: '#2a2a2a',
+            border: '1px solid #444',
             color: '#4dabf7',
-            marginLeft: '8px',
-            background: 'none',
-            border: 'none'
+            padding: '4px 6px',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '0.65rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '3px',
+            transition: 'all 0.2s',
+            fontWeight: '500',
+            flexShrink: 0
         },
         actionBtn: {
             width: '100%',
-            padding: '14px',
-            borderRadius: '10px',
+            padding: '10px',
+            borderRadius: '8px',
             border: 'none',
             fontWeight: 'bold',
-            fontSize: '1rem',
+            fontSize: '0.9rem',
             cursor: 'pointer',
-            marginTop: '10px',
+            marginTop: '6px',
             background: isRunning ? '#fa5252' : '#228be6',
             color: 'white',
             boxShadow: isRunning ? '0 4px 15px rgba(250, 82, 82, 0.4)' : '0 4px 15px rgba(34, 139, 230, 0.4)',
@@ -155,7 +211,9 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
                     <div style={styles.iconGroup}>
                         {/* Only Owner sees Settings */}
                         {isOwner && (
-                            <button style={styles.iconBtn} onClick={onSettings} title="Settings">⚙️</button>
+                            <button style={styles.iconBtn} onClick={onSettings} title="Settings">
+                                <span style={{ fontSize: '14px' }}>⚙</span>
+                            </button>
                         )}
                         {/* Only Owner sees Delete (and only when stopped) */}
                         {isOwner && !isRunning && (
@@ -164,7 +222,7 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
                                 onClick={onDelete}
                                 title="Delete Server"
                             >
-                                🗑️
+                                <span style={{ fontSize: '16px' }}>×</span>
                             </button>
                         )}
                     </div>
@@ -174,8 +232,11 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
                 <div style={styles.infoBlock}>
                     {/* Invite Code Row */}
                     <div style={styles.infoRow}>
-                        <span>🆔 Invite Code</span>
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <div style={styles.infoLabel}>
+                            <span>🔑</span>
+                            <span>Invite Code</span>
+                        </div>
+                        <div style={styles.infoValue}>
                             <span
                                 style={styles.codeBlur}
                                 onClick={() => setShowInvite(!showInvite)}
@@ -183,8 +244,12 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
                             >
                                 {showInvite ? invite_code : '••••••••'}
                             </span>
-                            <button style={styles.copySmall} onClick={() => handleCopy(invite_code)}>
-                                {copied ? '✅' : '📋'}
+                            <button 
+                                style={styles.copyBtn} 
+                                onClick={(e) => handleCopy(invite_code, e, 'invite')}
+                                title="Copy Invite Code"
+                            >
+                                {copiedInvite ? '✓ Copied' : 'Copy'}
                             </button>
                         </div>
                     </div>
@@ -192,13 +257,20 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
                     {/* Server Address Row (Only show if running) */}
                     {isRunning && (
                         <div style={styles.infoRow}>
-                            <span>🌍 Address</span>
-                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                <span style={{ color: '#40c057', fontFamily: 'monospace' }}>
+                            <div style={styles.infoLabel}>
+                                <span>🌐</span>
+                                <span>Server Address</span>
+                            </div>
+                            <div style={styles.infoValue}>
+                                <span style={styles.addressBox}>
                                     {displayAddress}
                                 </span>
-                                <button style={styles.copySmall} onClick={() => handleCopy(displayAddress)}>
-                                    📋
+                                <button 
+                                    style={styles.copyBtn} 
+                                    onClick={(e) => handleCopy(displayAddress, e, 'address')}
+                                    title="Copy Address"
+                                >
+                                    {copiedAddress ? '✓ Copied' : 'Copy'}
                                 </button>
                             </div>
                         </div>
