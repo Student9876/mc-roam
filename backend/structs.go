@@ -16,13 +16,15 @@ type ServerGroup struct {
 	ID      string   `bson:"_id,omitempty" json:"id"`
 	Name    string   `bson:"name" json:"name"`
 	OwnerID string   `bson:"owner_id" json:"owner_id"`
-	Members []string `bson:"members" json:"members"` // List of Usernames
+	Members []string `bson:"members" json:"members"`
 
-	// The "Traffic Light" Lock
-	Lock ServerLock `bson:"lock" json:"lock"`
+	// --- NEW FIELD ---
+	// Stores the entire content of rclone.conf
+	RcloneConfig string `bson:"rclone_config" json:"-"` // JSON "-" means don't send to frontend UI for safety
+	// -----------------
 
-	// Invite Code (Simple lookup)
-	InviteCode string `bson:"invite_code" json:"invite_code"`
+	Lock       ServerLock `bson:"lock" json:"lock"`
+	InviteCode string     `bson:"invite_code" json:"invite_code"`
 }
 
 type ServerLock struct {

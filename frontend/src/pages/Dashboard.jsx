@@ -6,6 +6,7 @@ export default function Dashboard() {
     const [servers, setServers] = useState([]);
     const [newServerName, setNewServerName] = useState("");
     const [inviteCode, setInviteCode] = useState(""); // New State
+    const [rcloneConf, setRcloneConf] = useState("");
 
     const currentUser = sessionStorage.getItem("mc_username") || "Unknown";
     const navigate = useNavigate();
@@ -18,9 +19,13 @@ export default function Dashboard() {
     };
 
     const handleCreate = async () => {
-        if (!newServerName) return;
-        await CreateServer(newServerName, currentUser);
+        if (!newServerName || !rcloneConf) {
+            alert("Please enter a name AND paste your rclone.conf content!");
+            return;
+        }
+        await CreateServer(newServerName, currentUser, rcloneConf); // Pass 3 args
         setNewServerName("");
+        setRcloneConf("");
         loadServers();
     };
 
@@ -66,14 +71,21 @@ export default function Dashboard() {
                 {/* Create Box */}
                 <div style={styles.box}>
                     <h3>Create New</h3>
-                    <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "10px" }}>
                         <input
                             style={styles.input}
                             placeholder="Server Name"
                             value={newServerName}
                             onChange={(e) => setNewServerName(e.target.value)}
                         />
-                        <button className="btn" onClick={handleCreate}>Create</button>
+                        {/* CONFIG TEXT AREA */}
+                        <textarea
+                            style={{ ...styles.input, height: "60px", fontSize: "0.8rem", fontFamily: "monospace" }}
+                            placeholder="Paste rclone.conf content here..."
+                            value={rcloneConf}
+                            onChange={(e) => setRcloneConf(e.target.value)}
+                        />
+                        <button className="btn" onClick={handleCreate}>Create Server</button>
                     </div>
                 </div>
 

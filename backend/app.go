@@ -105,24 +105,21 @@ func (a *App) Login(username string, password string) string {
 
 // --- SERVER MANAGEMENT METHODS ---
 
-// CreateServer creates a new server group
-func (a *App) CreateServer(serverName string, ownerUsername string) string {
+// CreateServer creates a new server group (UPDATED)
+func (a *App) CreateServer(serverName string, ownerUsername string, configString string) string {
 	collection := DB.Client.Database("mc_roam").Collection("servers")
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// 1. Generate a Unique ID manually (String format)
-	// This prevents the ObjectID mismatch issue
 	newID := fmt.Sprintf("srv_%d", time.Now().UnixNano())
 
-	// Create the object
 	newServer := ServerGroup{
-		ID:         newID, // <--- EXPLICITLY SET THE ID
-		Name:       serverName,
-		OwnerID:    ownerUsername,
-		Members:    []string{ownerUsername},
-		InviteCode: generateInviteCode(),
+		ID:           newID,
+		Name:         serverName,
+		OwnerID:      ownerUsername,
+		Members:      []string{ownerUsername},
+		InviteCode:   generateInviteCode(),
+		RcloneConfig: configString, // <--- SAVE THE KEYS
 		Lock: ServerLock{
 			IsRunning: false,
 		},
@@ -132,7 +129,6 @@ func (a *App) CreateServer(serverName string, ownerUsername string) string {
 	if err != nil {
 		return fmt.Sprintf("Error: Failed to create server: %v", err)
 	}
-
 	return "Success: Server created!"
 }
 
@@ -202,11 +198,28 @@ func (a *App) StartServer(serverID string, username string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// 1. The Filter: Match ID AND ensure it is NOT running
-	filter := bson.M{
-		"_id":             serverID,
-		"lock.is_running": false, // CRITICAL: This prevents double-hosting
+	// 1. The Filter (Existing code...)
+	filter := bson.M{"_id": serverID, "lock.is_running": false}
+
+	// --- NEW: FETCH CONFIG FIRST ---
+	var serverDoc ServerGroup
+	// We need to find the doc to get the RcloneConfig string
+	// Note: This is a separate read before the write.
+	// Ideally we do this atomically, but for now this is fine.
+	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&serverDoc)
+	if err != nil {
+		return "Error: Server not found."
 	}
+
+	// INJECT THE CONFIG!
+	if serverDoc.RcloneConfig == "" {
+		return "Error: This server has no Cloud Config set up!"
+	}
+	err = a.InjectConfig(serverDoc.RcloneConfig)
+	if err != nil {
+		return "Error: Failed to inject cloud keys."
+	}
+	// -------------------------------
 
 	// 2. The Update: Set running=true, host=me
 	update := bson.M{

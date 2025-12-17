@@ -39,8 +39,14 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 
 	fmt.Printf("🔄 Syncing (%s): %s -> %s\n", direction, source, dest)
 
-	// 3. The Command: rclone sync [source] [dest] --progress
-	cmd := exec.Command(rcloneBin, "sync", source, dest, "--progress", "--create-empty-src-dirs")
+	// 3. The Command: Add --config flag
+	// This forces Rclone to use the credentials we just injected
+	cmd := exec.Command(rcloneBin,
+		"sync", source, dest,
+		"--progress",
+		"--create-empty-src-dirs",
+		"--config", "./rclone.conf",
+	)
 
 	// Connect output to console so we can see what's happening in VS Code terminal
 	cmd.Stdout = os.Stdout
