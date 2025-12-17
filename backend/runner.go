@@ -3,6 +3,7 @@ package backend
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -14,6 +15,7 @@ import (
 
 // Global variable for the current session
 var activeCmd *exec.Cmd
+var stdinPipe io.WriteCloser
 
 // GetFreePort asks the OS for a random free port
 func GetFreePort() (int, error) {
@@ -57,6 +59,50 @@ func (a *App) UpdateServerProperties(serverDir string, port int) error {
 	return os.WriteFile(propsPath, []byte(strings.Join(newLines, "\n")), 0644)
 }
 
+// FindProcessLockingFile uses Windows handle.exe to find what's locking a file
+func (a *App) FindProcessLockingFile(filePath string) []int {
+	// Try using PowerShell's Get-Process with handle checking
+	cmd := exec.Command("powershell", "-Command",
+		fmt.Sprintf(`Get-Process | Where-Object {$_.Modules.FileName -like "*%s*"} | Select-Object -ExpandProperty Id`, filepath.Base(filePath)))
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil
+	}
+
+	var pids []int
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if pid, err := strconv.Atoi(line); err == nil && pid > 0 {
+			pids = append(pids, pid)
+		}
+	}
+	return pids
+}
+
+// KillProcessesLockingLogs finds and kills any Java processes holding log files
+func (a *App) KillProcessesLockingLogs(serverDir string) {
+	logFile := filepath.Join(serverDir, "logs", "latest.log")
+
+	// Method 1: Kill all java.exe processes in this directory
+	cmd := exec.Command("powershell", "-Command",
+		fmt.Sprintf(`Get-Process java -ErrorAction SilentlyContinue | Where-Object {$_.Path -like "*%s*"} | Stop-Process -Force`,
+			strings.ReplaceAll(serverDir, "\\", "\\\\")))
+
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		a.Log("🧹 Killed lingering Java processes")
+	} else {
+		a.Log(fmt.Sprintf("⚠️ Java cleanup: %s", string(output)))
+	}
+
+	// Method 2: Try to delete the log file (might fail, that's OK)
+	os.Remove(logFile)
+
+	time.Sleep(2 * time.Second) // Wait for handles to release
+}
+
 // ForceKillPort finds any process listening on the given port and kills it
 func (a *App) ForceKillPort(port int) {
 	// Command: netstat -ano | findstr :<PORT>
@@ -85,19 +131,22 @@ func (a *App) ForceKillPort(port int) {
 
 // RunMinecraftServer launches the server on a dynamic port and streams logs
 func (a *App) RunMinecraftServer(serverDir string, port int) error {
-	// 1. KILL ZOMBIE FIRST (before anything else)
+	// 1. KILL ZOMBIE FIRST
 	a.KillZombie(serverDir)
 
-	// 2. CLEAN FILE LOCKS (before port cleanup)
+	// 2. KILL LINGERING JAVA PROCESSES HOLDING LOG FILES
+	a.KillProcessesLockingLogs(serverDir)
+
+	// 3. CLEAN FILE LOCKS
 	a.CleanLocks(serverDir)
 
-	// 3. FORCE KILL PORT (after zombie is dead)
+	// 4. FORCE KILL PORT
 	a.ForceKillPort(port)
 
-	// 4. Wait a bit longer for OS to fully release resources
+	// 5. Wait longer for OS to fully release resources
 	time.Sleep(2 * time.Second)
 
-	// 2. Set Port in Config
+	// 6. Set Port in Config
 	err := a.UpdateServerProperties(serverDir, port)
 	if err != nil {
 		a.Log(fmt.Sprintf("⚠️ Failed to update port: %v", err))
@@ -108,11 +157,18 @@ func (a *App) RunMinecraftServer(serverDir string, port int) error {
 		return fmt.Errorf("server.jar not found")
 	}
 
-	// 3. Command
+	// 7. Command
 	cmd := exec.Command("java", "-Xmx2G", "-Xms2G", "-jar", jarName, "nogui")
 	cmd.Dir = serverDir
 
-	// 4. LOG STREAMING MAGIC
+	// 8. Get stdin pipe for graceful shutdown
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+	stdinPipe = stdin
+
+	// 9. LOG STREAMING MAGIC
 	stdout, _ := cmd.StdoutPipe()
 	cmd.Stderr = cmd.Stdout // Merge errors into stdout
 
@@ -132,7 +188,7 @@ func (a *App) RunMinecraftServer(serverDir string, port int) error {
 	activeCmd = cmd
 	a.Log(fmt.Sprintf("✅ Minecraft Server Started on Port %d (PID: %d)", port, cmd.Process.Pid))
 
-	// 5. Save PID
+	// 10. Save PID
 	pidFile := filepath.Join(serverDir, "server.pid")
 	os.WriteFile(pidFile, []byte(strconv.Itoa(cmd.Process.Pid)), 0644)
 
@@ -140,6 +196,7 @@ func (a *App) RunMinecraftServer(serverDir string, port int) error {
 		cmd.Wait()
 		a.Log("🛑 Minecraft Server Exited.")
 		activeCmd = nil
+		stdinPipe = nil
 		os.Remove(pidFile)
 	}()
 
@@ -153,17 +210,21 @@ func (a *App) KillZombie(serverDir string) {
 	if err != nil {
 		return
 	}
-	pid, err := strconv.Atoi(string(data))
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
 	if err != nil {
 		return
 	}
-	process, err := os.FindProcess(pid)
-	if err == nil {
-		a.Log(fmt.Sprintf("🧟 Found Zombie Process (PID: %d). Killing it...", pid))
-		process.Kill()
-		process.Wait()
-		time.Sleep(1 * time.Second)
-	}
+
+	a.Log(fmt.Sprintf("🧟 Found Zombie Process (PID: %d). Killing it...", pid))
+
+	// Try graceful shutdown first
+	exec.Command("taskkill", "/PID", strconv.Itoa(pid)).Run()
+	time.Sleep(3 * time.Second)
+
+	// Force kill if still alive
+	exec.Command("taskkill", "/F", "/PID", strconv.Itoa(pid)).Run()
+	time.Sleep(1 * time.Second)
+
 	os.Remove(pidPath)
 }
 
@@ -174,19 +235,49 @@ func (a *App) CleanLocks(serverDir string) {
 		filepath.Join(serverDir, "world_nether", "session.lock"),
 		filepath.Join(serverDir, "world_the_end", "session.lock"),
 		filepath.Join(serverDir, "logs", "latest.log"),
-		filepath.Join(serverDir, "logs", "latest.log.lck"), // Log4j lock file
+		filepath.Join(serverDir, "logs", "latest.log.lck"),
 	}
+
 	for _, path := range targets {
-		if err := os.Remove(path); err == nil {
-			a.Log(fmt.Sprintf("🧹 Cleaned lock: %s", path))
+		// Try multiple times for stubborn files
+		for i := 0; i < 3; i++ {
+			if err := os.Remove(path); err == nil {
+				a.Log(fmt.Sprintf("🧹 Cleaned lock: %s", path))
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
 		}
 	}
 	a.Log("✅ Lock cleanup complete")
 }
 
-// KillMinecraftServer (Manual Stop from UI)
+// KillMinecraftServer (Manual Stop from UI) - GRACEFUL SHUTDOWN
 func (a *App) KillMinecraftServer() error {
 	if activeCmd != nil && activeCmd.Process != nil {
+		a.Log("🛑 Gracefully stopping Minecraft server...")
+
+		// Send "stop" command to the server (graceful shutdown)
+		if stdinPipe != nil {
+			stdinPipe.Write([]byte("stop\n"))
+			stdinPipe.Close()
+
+			// Wait up to 10 seconds for graceful shutdown
+			done := make(chan error, 1)
+			go func() {
+				done <- activeCmd.Wait()
+			}()
+
+			select {
+			case <-done:
+				a.Log("✅ Server stopped gracefully")
+				return nil
+			case <-time.After(10 * time.Second):
+				a.Log("⚠️ Graceful shutdown timed out, force killing...")
+				return activeCmd.Process.Kill()
+			}
+		}
+
+		// Fallback to force kill
 		return activeCmd.Process.Kill()
 	}
 	return nil

@@ -18,6 +18,10 @@ export function CreateServer(arg1, arg2, arg3) {
   return window['go']['backend']['App']['CreateServer'](arg1, arg2, arg3);
 }
 
+export function FindProcessLockingFile(arg1) {
+  return window['go']['backend']['App']['FindProcessLockingFile'](arg1);
+}
+
 export function ForceKillPort(arg1) {
   return window['go']['backend']['App']['ForceKillPort'](arg1);
 }
@@ -48,6 +52,10 @@ export function JoinServer(arg1, arg2) {
 
 export function KillMinecraftServer() {
   return window['go']['backend']['App']['KillMinecraftServer']();
+}
+
+export function KillProcessesLockingLogs(arg1) {
+  return window['go']['backend']['App']['KillProcessesLockingLogs'](arg1);
 }
 
 export function KillZombie(arg1) {

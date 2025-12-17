@@ -10,6 +10,8 @@ export function CleanLocks(arg1:string):Promise<void>;
 
 export function CreateServer(arg1:string,arg2:string,arg3:string):Promise<string>;
 
+export function FindProcessLockingFile(arg1:string):Promise<Array<number>>;
+
 export function ForceKillPort(arg1:number):Promise<void>;
 
 export function GetMyServers(arg1:string):Promise<Array<backend.ServerGroup>>;
@@ -25,6 +27,8 @@ export function InstallServer(arg1:string):Promise<string>;
 export function JoinServer(arg1:string,arg2:string):Promise<string>;
 
 export function KillMinecraftServer():Promise<void>;
+
+export function KillProcessesLockingLogs(arg1:string):Promise<void>;
 
 export function KillZombie(arg1:string):Promise<void>;
 
