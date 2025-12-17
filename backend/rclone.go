@@ -1,7 +1,6 @@
 package backend
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -73,11 +72,40 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 		return err
 	}
 
-	scanner := bufio.NewScanner(stdout)
-	for scanner.Scan() {
-		text := scanner.Text()
-		a.Log("[Sync]: " + text)
-	}
+	// Read output byte-by-byte to handle carriage returns
+	go func() {
+		buf := make([]byte, 1)
+		line := ""
+		for {
+			n, err := stdout.Read(buf)
+			if n > 0 {
+				char := buf[0]
+				if char == '\r' {
+					// Carriage return - emit current line and reset
+					if line != "" {
+						a.Log("[Sync]: " + line)
+						line = ""
+					}
+				} else if char == '\n' {
+					// Newline - emit line and reset
+					if line != "" {
+						a.Log("[Sync]: " + line)
+						line = ""
+					}
+				} else {
+					// Regular character - append to line
+					line += string(char)
+				}
+			}
+			if err != nil {
+				// Emit any remaining content
+				if line != "" {
+					a.Log("[Sync]: " + line)
+				}
+				break
+			}
+		}
+	}()
 
 	if err := cmd.Wait(); err != nil {
 		return fmt.Errorf("sync failed: %w", err)
