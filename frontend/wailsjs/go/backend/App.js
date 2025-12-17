@@ -26,6 +26,10 @@ export function Register(arg1, arg2) {
   return window['go']['backend']['App']['Register'](arg1, arg2);
 }
 
+export function RunSync(arg1, arg2, arg3) {
+  return window['go']['backend']['App']['RunSync'](arg1, arg2, arg3);
+}
+
 export function StartServer(arg1, arg2) {
   return window['go']['backend']['App']['StartServer'](arg1, arg2);
 }

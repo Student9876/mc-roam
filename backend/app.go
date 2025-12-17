@@ -3,11 +3,12 @@ package backend
 import (
 	"context"
 	"fmt"
+	"os"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"  // Add this
 	"go.mongodb.org/mongo-driver/mongo" // Add this
 	"golang.org/x/crypto/bcrypt"        // Add this
-	"time"
 )
 
 // App struct
@@ -226,39 +227,76 @@ func (a *App) StartServer(serverID string, username string) string {
 		return "Error: Server is already running (Locked by someone else)!"
 	}
 
-	// TODO: In the future, this is where we trigger the File Sync & Game Launch
-	return "Success: Server Started!"
+	if result.ModifiedCount == 0 {
+		return "Error: Server is already running!"
+	}
+
+	// --- NEW: TRIGGER SYNC ---
+	// 1. Ensure local world folder exists
+	localWorld := "./minecraft_server/world"
+	EnsureLocalFolder(localWorld)
+
+	// 2. Pull data from Cloud (Sync Down)
+	// We are syncing the 'world' folder from the remote
+	err = a.RunSync(SyncDown, "world", localWorld)
+	if err != nil {
+		// If sync fails, release the lock immediately so we aren't stuck
+		a.StopServer(serverID, username)
+		return fmt.Sprintf("Error: Sync failed: %v", err)
+	}
+
+	return "Success: Server Started & Synced!"
 }
 
-// StopServer releases the lock
+// StopServer syncs data BACK to cloud, then releases the lock
 func (a *App) StopServer(serverID string, username string) string {
 	collection := DB.Client.Database("mc_roam").Collection("servers")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // Increased timeout for upload
 	defer cancel()
 
-	// 1. The Filter: Match ID AND ensure *I* am the host
+	// 1. Verify we are the host
 	filter := bson.M{
 		"_id":             serverID,
 		"lock.is_running": true,
-		"lock.hosted_by":  username, // Safety: Only the host can stop it
+		"lock.hosted_by":  username,
 	}
 
-	// 2. The Update: Set running=false
+	// Check existence before we do the heavy lifting
+	var result ServerGroup
+	err := collection.FindOne(ctx, filter).Decode(&result)
+	if err != nil {
+		return "Error: You are not the host, or server is already stopped."
+	}
+
+	// --- NEW: TRIGGER SYNC UP (PUSH) ---
+	localWorld := "./minecraft_server/world"
+
+	// Check if world actually exists before trying to upload
+	if _, err := os.Stat(localWorld); err == nil {
+		fmt.Println("🚀 Starting Upload (Sync Up)...")
+
+		// Run Rclone: Local -> Cloud
+		err := a.RunSync(SyncUp, "world", localWorld)
+		if err != nil {
+			return fmt.Sprintf("Error: Upload failed! Data NOT saved. (%v)", err)
+		}
+		fmt.Println("✅ Upload Complete!")
+	}
+	// -----------------------------------
+
+	// 2. Release the Lock (Only after sync succeeds!)
 	update := bson.M{
 		"$set": bson.M{
 			"lock.is_running": false,
 			"lock.hosted_by":  "",
+			"lock.hosted_at":  time.Time{}, // Reset time
 		},
 	}
 
-	result, err := collection.UpdateOne(ctx, filter, update)
+	_, err = collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		return "Error: Database failed"
-	}
-	if result.ModifiedCount == 0 {
-		return "Error: You are not the host, or server is already stopped."
+		return "Error: Database update failed (but files were synced!)"
 	}
 
-	// TODO: In the future, this is where we trigger the Upload Sync
-	return "Success: Server Stopped!"
+	return "Success: Server Stopped & Saved!"
 }

@@ -14,6 +14,8 @@ export function Login(arg1:string,arg2:string):Promise<string>;
 
 export function Register(arg1:string,arg2:string):Promise<string>;
 
+export function RunSync(arg1:backend.SyncDirection,arg2:string,arg3:string):Promise<void>;
+
 export function StartServer(arg1:string,arg2:string):Promise<string>;
 
 export function StopServer(arg1:string,arg2:string):Promise<string>;
