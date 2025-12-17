@@ -85,9 +85,17 @@ func (a *App) ForceKillPort(port int) {
 
 // RunMinecraftServer launches the server on a dynamic port and streams logs
 func (a *App) RunMinecraftServer(serverDir string, port int) error {
-	// 1. NUCLEAR CLEANUP
-	a.ForceKillPort(port) // Ensure the new port is actually free
+	// 1. KILL ZOMBIE FIRST (before anything else)
+	a.KillZombie(serverDir)
+
+	// 2. CLEAN FILE LOCKS (before port cleanup)
 	a.CleanLocks(serverDir)
+
+	// 3. FORCE KILL PORT (after zombie is dead)
+	a.ForceKillPort(port)
+
+	// 4. Wait a bit longer for OS to fully release resources
+	time.Sleep(2 * time.Second)
 
 	// 2. Set Port in Config
 	err := a.UpdateServerProperties(serverDir, port)
@@ -163,11 +171,17 @@ func (a *App) KillZombie(serverDir string) {
 func (a *App) CleanLocks(serverDir string) {
 	targets := []string{
 		filepath.Join(serverDir, "world", "session.lock"),
+		filepath.Join(serverDir, "world_nether", "session.lock"),
+		filepath.Join(serverDir, "world_the_end", "session.lock"),
 		filepath.Join(serverDir, "logs", "latest.log"),
+		filepath.Join(serverDir, "logs", "latest.log.lck"), // Log4j lock file
 	}
 	for _, path := range targets {
-		os.Remove(path)
+		if err := os.Remove(path); err == nil {
+			a.Log(fmt.Sprintf("🧹 Cleaned lock: %s", path))
+		}
 	}
+	a.Log("✅ Lock cleanup complete")
 }
 
 // KillMinecraftServer (Manual Stop from UI)

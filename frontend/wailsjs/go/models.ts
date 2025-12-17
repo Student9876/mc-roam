@@ -77,6 +77,45 @@ export namespace backend {
 		    return a;
 		}
 	}
+	
+	export class ServerProps {
+	    "max-players": string;
+	    gamemode: string;
+	    difficulty: string;
+	    "white-list": boolean;
+	    "online-mode": boolean;
+	    pvp: boolean;
+	    "enable-command-block": boolean;
+	    "allow-flight": boolean;
+	    "spawn-animals": boolean;
+	    "spawn-monsters": boolean;
+	    "spawn-npcs": boolean;
+	    "allow-nether": boolean;
+	    "force-gamemode": boolean;
+	    "spawn-protection": string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ServerProps(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this["max-players"] = source["max-players"];
+	        this.gamemode = source["gamemode"];
+	        this.difficulty = source["difficulty"];
+	        this["white-list"] = source["white-list"];
+	        this["online-mode"] = source["online-mode"];
+	        this.pvp = source["pvp"];
+	        this["enable-command-block"] = source["enable-command-block"];
+	        this["allow-flight"] = source["allow-flight"];
+	        this["spawn-animals"] = source["spawn-animals"];
+	        this["spawn-monsters"] = source["spawn-monsters"];
+	        this["spawn-npcs"] = source["spawn-npcs"];
+	        this["allow-nether"] = source["allow-nether"];
+	        this["force-gamemode"] = source["force-gamemode"];
+	        this["spawn-protection"] = source["spawn-protection"];
+	    }
+	}
 
 }
 

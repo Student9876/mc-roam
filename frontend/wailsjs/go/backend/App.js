@@ -26,6 +26,10 @@ export function GetMyServers(arg1) {
   return window['go']['backend']['App']['GetMyServers'](arg1);
 }
 
+export function GetServerOptions(arg1) {
+  return window['go']['backend']['App']['GetServerOptions'](arg1);
+}
+
 export function Greet(arg1) {
   return window['go']['backend']['App']['Greet'](arg1);
 }
@@ -68,6 +72,10 @@ export function RunMinecraftServer(arg1, arg2) {
 
 export function RunSync(arg1, arg2, arg3) {
   return window['go']['backend']['App']['RunSync'](arg1, arg2, arg3);
+}
+
+export function SaveServerOptions(arg1, arg2) {
+  return window['go']['backend']['App']['SaveServerOptions'](arg1, arg2);
 }
 
 export function StartServer(arg1, arg2) {

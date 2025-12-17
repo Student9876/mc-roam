@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef } from 'react'; // <--- Added useRef
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 // 1. Backend Functions
 import { GetMyServers, CreateServer, JoinServer, StartServer, StopServer, AuthorizeDrive, InstallServer } from '../../wailsjs/go/backend/App';
-// 2. Runtime Functions (FIXED IMPORT)
+// 2. Runtime Functions
 import { EventsOn } from '../../wailsjs/runtime/runtime';
+// 3. Components
+import SettingsModal from '../components/SettingsModal';
 
 export default function Dashboard() {
     const [servers, setServers] = useState([]);
@@ -16,31 +18,31 @@ export default function Dashboard() {
     const [activeServerId, setActiveServerId] = useState(null);
     const [isInstalling, setIsInstalling] = useState(false);
 
-    // --- NEW: LOGGING STATE ---
+    // Settings State
+    const [settingsServerId, setSettingsServerId] = useState(null);
+
+    // Logging State
     const [logs, setLogs] = useState([]);
     const [activePort, setActivePort] = useState(null);
     const logsEndRef = useRef(null);
-    // --------------------------
 
     const currentUser = sessionStorage.getItem("mc_username") || "Unknown";
     const navigate = useNavigate();
 
     useEffect(() => { loadServers() }, []);
 
-    // --- NEW: LIVE LOG LISTENER ---
+    // Live Log Listener
     useEffect(() => {
-        // Listen for "server-log" event from Go
         const stopListening = EventsOn("server-log", (message) => {
-            setLogs((prev) => [...prev, message].slice(-200)); // Keep last 200 lines
+            setLogs((prev) => [...prev, message].slice(-200));
         });
-        return () => stopListening && stopListening(); // Cleanup (optional but good)
+        return () => stopListening && stopListening();
     }, []);
 
-    // Auto-scroll to bottom of logs
+    // Auto-scroll logs
     useEffect(() => {
         logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [logs]);
-    // ------------------------------
 
     const loadServers = async () => {
         const list = await GetMyServers(currentUser);
@@ -77,14 +79,12 @@ export default function Dashboard() {
     };
 
     const handleStart = async (serverId) => {
-        // Clear old logs when starting new server
         setLogs([]);
         setActivePort(null);
 
         const result = await StartServer(serverId, currentUser);
 
         if (result.startsWith("Success:")) {
-            // Format is "Success:25565"
             const port = result.split(":")[1];
             setActivePort(port);
             loadServers();
@@ -169,10 +169,26 @@ export default function Dashboard() {
                                     <h3 style={{ margin: "0 0 5px 0" }}>{server.name}</h3>
                                     <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: "10px" }}>ID: {server.invite_code}</div>
                                 </div>
-                                <div style={{ padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold", background: isRunning ? "rgba(81, 207, 102, 0.2)" : "rgba(255, 255, 255, 0.1)", color: isRunning ? "#51cf66" : "#888" }}>
-                                    {isRunning ? "ONLINE" : "OFFLINE"}
+
+                                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                                    {/* Status Badge */}
+                                    <div style={{ padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold", background: isRunning ? "rgba(81, 207, 102, 0.2)" : "rgba(255, 255, 255, 0.1)", color: isRunning ? "#51cf66" : "#888" }}>
+                                        {isRunning ? "ONLINE" : "OFFLINE"}
+                                    </div>
+
+                                    {/* Gear Icon (MOVED INSIDE THE LOOP) */}
+                                    {isMyServer && (
+                                        <button
+                                            onClick={() => setSettingsServerId(server.id)}
+                                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem" }}
+                                            title="Server Settings"
+                                        >
+                                            ⚙️
+                                        </button>
+                                    )}
                                 </div>
                             </div>
+
                             <div style={{ marginTop: "15px", paddingTop: "15px", borderTop: "1px solid #444" }}>
                                 {!isRunning && <button className="btn" onClick={() => handleStart(server.id)} style={{ width: "100%", background: "#228be6" }}>Start Server</button>}
                                 {isRunning && isMyServer && <button className="btn" onClick={() => handleStop(server.id)} style={{ width: "100%", background: "#fa5252" }}>Stop Server</button>}
@@ -182,6 +198,14 @@ export default function Dashboard() {
                     );
                 })}
             </div>
+
+            {/* SETTINGS MODAL (Outside the loop, but conditionally rendered) */}
+            {settingsServerId && (
+                <SettingsModal
+                    serverId={settingsServerId}
+                    onClose={() => setSettingsServerId(null)}
+                />
+            )}
 
             {/* MODAL */}
             {needsSetup && (
