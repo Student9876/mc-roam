@@ -445,7 +445,6 @@ func (a *App) getInstancePath(serverID string) string {
 }
 
 // DeleteServer removes the server from DB, Local Disk, and Cloud
-// DeleteServer removes the server from DB, Local Disk, and Cloud
 func (a *App) DeleteServer(serverID string, username string) string {
 	collection := DB.Client.Database("mc_roam").Collection("servers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
