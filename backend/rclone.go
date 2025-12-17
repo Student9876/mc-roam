@@ -41,12 +41,19 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 
 	// 3. The Command: Add --config flag
 	// This forces Rclone to use the credentials we just injected
-	cmd := exec.Command(rcloneBin,
+	args := []string{
 		"sync", source, dest,
 		"--progress",
 		"--create-empty-src-dirs",
 		"--config", "./rclone.conf",
-	)
+		"--exclude", "session.lock",
+		"--exclude", "logs/**", // Skip logs
+		"--exclude", "cache/**", // Skip cache
+		"--exclude", "libraries/**", // Skip libraries (Java downloads them automatically)
+		"--exclude", "versions/**", // Skip version data
+	}
+
+	cmd := exec.Command(rcloneBin, args...)
 
 	// Connect output to console so we can see what's happening in VS Code terminal
 	cmd.Stdout = os.Stdout

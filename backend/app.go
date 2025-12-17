@@ -246,25 +246,39 @@ func (a *App) StartServer(serverID string, username string) string {
 
 	// --- NEW: TRIGGER SYNC ---
 	// 1. Ensure local world folder exists
-	localWorld := "./minecraft_server/world"
-	EnsureLocalFolder(localWorld)
+	localServer := "./minecraft_server"
+	EnsureLocalFolder(localServer)
 
 	// 2. Pull data from Cloud (Sync Down)
 	// We are syncing the 'world' folder from the remote
-	err = a.RunSync(SyncDown, "world", localWorld)
+	// err = a.RunSync(SyncDown, "minecraft-server", localServer)
+	// if err != nil {
+	// 	// If sync fails, release the lock immediately so we aren't stuck
+	// 	a.StopServer(serverID, username)
+	// 	return fmt.Sprintf("Error: Sync failed: %v", err)
+	// }
+	// --- NEW: LAUNCH THE GAME ---
+	err = a.RunMinecraftServer()
 	if err != nil {
-		// If sync fails, release the lock immediately so we aren't stuck
+		// If launch fails, we must upload changes (if any) and unlock
 		a.StopServer(serverID, username)
-		return fmt.Sprintf("Error: Sync failed: %v", err)
+		return fmt.Sprintf("Error: Failed to launch server.jar: %v", err)
 	}
 
-	return "Success: Server Started & Synced!"
+	return "Success: Server Started & Running!"
 }
 
 // StopServer syncs data BACK to cloud, then releases the lock
 func (a *App) StopServer(serverID string, username string) string {
+
+	// 1. Kill the process first!
+	a.KillMinecraftServer()
+	// Give it a second to release file locks
+	time.Sleep(2 * time.Second)
+
 	collection := DB.Client.Database("mc_roam").Collection("servers")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // Increased timeout for upload
+	// Give it 10 minutes to upload large files before giving up on the DB update
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	// 1. Verify we are the host
@@ -282,14 +296,14 @@ func (a *App) StopServer(serverID string, username string) string {
 	}
 
 	// --- NEW: TRIGGER SYNC UP (PUSH) ---
-	localWorld := "./minecraft_server/world"
+	localServer := "./minecraft_server"
 
 	// Check if world actually exists before trying to upload
-	if _, err := os.Stat(localWorld); err == nil {
+	if _, err := os.Stat(localServer); err == nil {
 		fmt.Println("🚀 Starting Upload (Sync Up)...")
 
 		// Run Rclone: Local -> Cloud
-		err := a.RunSync(SyncUp, "world", localWorld)
+		err = a.RunSync(SyncUp, "minecraft-server", localServer)
 		if err != nil {
 			return fmt.Sprintf("Error: Upload failed! Data NOT saved. (%v)", err)
 		}
