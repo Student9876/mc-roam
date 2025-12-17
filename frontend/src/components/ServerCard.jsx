@@ -233,7 +233,6 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
                     {/* Invite Code Row */}
                     <div style={styles.infoRow}>
                         <div style={styles.infoLabel}>
-                            <span>🔑</span>
                             <span>Invite Code</span>
                         </div>
                         <div style={styles.infoValue}>
@@ -258,7 +257,6 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
                     {isRunning && (
                         <div style={styles.infoRow}>
                             <div style={styles.infoLabel}>
-                                <span>🌐</span>
                                 <span>Server Address</span>
                             </div>
                             <div style={styles.infoValue}>

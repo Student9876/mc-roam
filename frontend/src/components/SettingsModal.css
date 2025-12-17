@@ -1,0 +1,97 @@
+/* Custom Scrollbar for Settings Modal */
+.settings-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+
+.settings-scroll::-webkit-scrollbar-track {
+    background: #1e1e1e;
+    border-radius: 10px;
+}
+
+.settings-scroll::-webkit-scrollbar-thumb {
+    background-color: #444;
+    border-radius: 10px;
+    border: 2px solid #1e1e1e;
+}
+
+.settings-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: #555;
+}
+
+/* Toggle Switch Animation */
+.settings-modal input[type="checkbox"] + span::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: white;
+    transition: 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.settings-modal input[type="checkbox"]:checked + span::before {
+    transform: translateX(24px);
+}
+
+/* Hover Effects */
+.settings-modal input:hover,
+.settings-modal select:hover {
+    border-color: #4dabf7;
+}
+
+.settings-modal input:focus,
+.settings-modal select:focus {
+    outline: none;
+    border-color: #4dabf7;
+    box-shadow: 0 0 0 2px rgba(77, 171, 247, 0.2);
+}
+
+.settings-modal button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(250, 176, 5, 0.4);
+}
+
+.settings-modal h4 {
+    margin-top: 0;
+    margin-bottom: 14px;
+    color: #fab005;
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #333;
+    padding-bottom: 8px;
+}
+
+/* Prevent input number spinner overflow */
+.settings-modal input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+.settings-modal input[type="number"]::-webkit-outer-spin-button,
+.settings-modal input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Ensure select dropdown doesn't overflow */
+.settings-modal select {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Toggle Container Hover */
+.settings-modal .toggleContainer:hover {
+    background: #333;
+    border-color: #4dabf7;
+}
+
+/* Close Button Hover */
+.settings-modal button[style*="closeBtn"]:hover {
+    background: #fa5252;
+    color: white;
+    border-color: #fa5252;
+}

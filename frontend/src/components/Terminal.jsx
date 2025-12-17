@@ -21,7 +21,7 @@ export default function Terminal() {
             if (msg.startsWith("[Sync]:")) {
                 handleSyncLog(msg);
             }
-            
+
             // Add ALL logs to terminal (no filtering)
             bufferRef.current.push(msg);
         });
@@ -55,9 +55,9 @@ export default function Terminal() {
             const transferMatch = msg.match(/Transferred:\s+(.+)/);
             if (transferMatch) {
                 const detail = transferMatch[1].split(',')[0].trim();
-                progressData = { 
-                    percent: null, 
-                    message: `Transfer: ${detail}` 
+                progressData = {
+                    percent: null,
+                    message: `Transfer: ${detail}`
                 };
             }
         }
@@ -65,9 +65,9 @@ export default function Terminal() {
         else if (msg.includes(" * ")) {
             const parts = msg.split("*");
             if (parts[1]) {
-                progressData = { 
-                    percent: null, 
-                    message: `📄 ${parts[1].trim()}` 
+                progressData = {
+                    percent: null,
+                    message: `📄 ${parts[1].trim()}`
                 };
             }
         }
@@ -102,7 +102,7 @@ export default function Terminal() {
             {/* Header */}
             <div className="terminal-header" onClick={() => setIsMinimized(!isMinimized)}>
                 <div className="terminal-title">
-                    <span>🖥️ Terminal</span>
+                    <span>Terminal</span>
                     {logs.length > 0 && <span style={{ opacity: 0.5, fontSize: "0.7rem" }}> — {logs.length} events</span>}
                 </div>
                 <div style={{ color: "#ccc", fontSize: "0.8rem" }}>
@@ -123,12 +123,12 @@ export default function Terminal() {
                         const isSync = log.startsWith("[Sync]:");
                         const isMC = log.includes("[MC]:");
                         const isImportant = log.includes("✅") || log.includes("🚀") || log.includes("❌");
-                        
+
                         return (
-                            <div 
-                                key={i} 
-                                className="log-line" 
-                                style={{ 
+                            <div
+                                key={i}
+                                className="log-line"
+                                style={{
                                     color: getLogColor(log),
                                     backgroundColor: isImportant ? 'rgba(64, 192, 87, 0.05)' : 'transparent',
                                     padding: isImportant ? '4px 8px' : '2px 0',

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { GetServerOptions, SaveServerOptions } from '../../wailsjs/go/backend/App';
+import './SettingsModal.css';
 
 export default function SettingsModal({ serverId, onClose }) {
     const [props, setProps] = useState(null);
@@ -28,36 +29,53 @@ export default function SettingsModal({ serverId, onClose }) {
     if (isLoading) return <div style={styles.modalOverlay}>Loading Settings...</div>;
 
     return (
-        <div style={styles.modalOverlay}>
-            <div style={styles.modalContent}>
+        <div style={styles.modalOverlay} onClick={onClose}>
+            <div style={styles.modalContent} onClick={(e) => e.stopPropagation()} className="settings-modal">
                 <div style={styles.header}>
-                    <h2>⚙️ Server Properties</h2>
-                    <button onClick={onClose} style={styles.closeBtn}>X</button>
+                    <h2 style={styles.title}>⚙️ Server Properties</h2>
+                    <button onClick={onClose} style={styles.closeBtn}>✕</button>
                 </div>
 
-                <div style={styles.grid}>
+                <div style={styles.scrollArea} className="settings-scroll">
+                    <div style={styles.grid}>
                     {/* General Settings */}
                     <div style={styles.section}>
                         <h4>General</h4>
-                        <label>Max Players
-                            <input type="number" value={props["max-players"]} onChange={(e) => handleChange("max-players", e.target.value)} style={styles.input} />
-                        </label>
-                        <label>Gamemode
-                            <select value={props["gamemode"]} onChange={(e) => handleChange("gamemode", e.target.value)} style={styles.input}>
+                        <label style={styles.label}>Max Players</label>
+                        <div style={styles.inputWrapper}>
+                            <input 
+                                type="number" 
+                                value={props["max-players"]} 
+                                onChange={(e) => handleChange("max-players", e.target.value)} 
+                                style={styles.input} 
+                            />
+                        </div>
+                        <label style={styles.label}>Gamemode</label>
+                        <div style={styles.inputWrapper}>
+                            <select 
+                                value={props["gamemode"]} 
+                                onChange={(e) => handleChange("gamemode", e.target.value)} 
+                                style={styles.input}
+                            >
                                 <option value="survival">Survival</option>
                                 <option value="creative">Creative</option>
                                 <option value="adventure">Adventure</option>
                                 <option value="spectator">Spectator</option>
                             </select>
-                        </label>
-                        <label>Difficulty
-                            <select value={props["difficulty"]} onChange={(e) => handleChange("difficulty", e.target.value)} style={styles.input}>
+                        </div>
+                        <label style={styles.label}>Difficulty</label>
+                        <div style={styles.inputWrapper}>
+                            <select 
+                                value={props["difficulty"]} 
+                                onChange={(e) => handleChange("difficulty", e.target.value)} 
+                                style={styles.input}
+                            >
                                 <option value="peaceful">Peaceful</option>
                                 <option value="easy">Easy</option>
                                 <option value="normal">Normal</option>
                                 <option value="hard">Hard</option>
                             </select>
-                        </label>
+                        </div>
                     </div>
 
                     {/* Toggles */}
@@ -78,48 +96,189 @@ export default function SettingsModal({ serverId, onClose }) {
                         <Toggle label="Animals" checked={props["spawn-animals"]} onChange={(v) => handleChange("spawn-animals", v)} />
                         <Toggle label="Villagers" checked={props["spawn-npcs"]} onChange={(v) => handleChange("spawn-npcs", v)} />
                     </div>
+                    </div>
                 </div>
 
                 <div style={styles.footer}>
-                    <button onClick={handleSave} style={styles.saveBtn}>💾 Save Changes</button>
+                    <button onClick={handleSave} style={styles.saveBtn}>Save Changes</button>
                 </div>
             </div>
         </div>
     );
 }
 
-// Helper Component for Checkboxes
+// Helper Component for Toggle Switches
 function Toggle({ label, checked, onChange }) {
     return (
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", background: "#333", padding: "8px", borderRadius: "4px" }}>
-            <span>{label}</span>
-            <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} style={{ transform: "scale(1.5)" }} />
+        <div style={styles.toggleContainer}>
+            <span style={styles.toggleLabel}>{label}</span>
+            <label style={styles.switch}>
+                <input 
+                    type="checkbox" 
+                    checked={checked} 
+                    onChange={(e) => onChange(e.target.checked)}
+                    style={{ display: 'none' }}
+                />
+                <span style={{
+                    ...styles.slider,
+                    background: checked ? '#4dabf7' : '#555'
+                }}></span>
+            </label>
         </div>
     );
 }
 
 const styles = {
     modalOverlay: {
-        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-        background: "rgba(0,0,0,0.85)",
-        display: "flex", justifyContent: "center", alignItems: "center",
-        zIndex: 10000 // <--- FIX: Higher than terminal (9999)
+        position: "fixed", 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        bottom: 0,
+        background: "rgba(0,0,0,0.9)",
+        display: "flex", 
+        justifyContent: "center", 
+        alignItems: "center",
+        zIndex: 10000,
+        backdropFilter: "blur(4px)"
     },
     modalContent: {
-        background: "#222",
-        padding: "20px",
-        borderRadius: "12px",
-        width: "800px",
-        maxHeight: "calc(90vh - 200px)", // <--- FIX: Subtract terminal height
-        overflowY: "auto",
+        background: "linear-gradient(135deg, #1e1e1e 0%, #252525 100%)",
+        padding: "0",
+        borderRadius: "16px",
+        width: "850px",
+        maxWidth: "90vw",
+        maxHeight: "85vh",
         border: "1px solid #444",
-        color: "white"
+        color: "white",
+        boxShadow: "0 20px 60px rgba(0, 0, 0, 0.8)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden"
     },
-    header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" },
-    closeBtn: { background: "transparent", border: "none", color: "#888", fontSize: "1.5rem", cursor: "pointer" },
-    grid: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px" },
-    section: { background: "#1a1a1a", padding: "15px", borderRadius: "8px" },
-    input: { width: "100%", padding: "8px", marginTop: "5px", marginBottom: "10px", background: "#333", color: "white", border: "1px solid #555", borderRadius: "4px" },
-    footer: { marginTop: "20px", textAlign: "right" },
-    saveBtn: { background: "#fab005", color: "black", padding: "10px 20px", border: "none", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }
+    header: { 
+        display: "flex", 
+        justifyContent: "space-between", 
+        alignItems: "center", 
+        padding: "24px 28px",
+        borderBottom: "1px solid #333",
+        background: "rgba(26, 26, 26, 0.5)"
+    },
+    title: {
+        margin: 0,
+        fontSize: "1.4rem",
+        fontWeight: "700",
+        color: "#fff",
+        display: "flex",
+        alignItems: "center",
+        gap: "10px"
+    },
+    closeBtn: { 
+        background: "#2a2a2a", 
+        border: "1px solid #444", 
+        color: "#ccc", 
+        fontSize: "1.2rem", 
+        cursor: "pointer",
+        width: "36px",
+        height: "36px",
+        borderRadius: "8px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "all 0.2s"
+    },
+    scrollArea: {
+        overflowY: "auto",
+        overflowX: "hidden",
+        padding: "24px 28px",
+        flex: 1
+    },
+    grid: { 
+        display: "grid", 
+        gridTemplateColumns: "1fr 1fr 1fr", 
+        gap: "20px"
+    },
+    section: { 
+        background: "rgba(26, 26, 26, 0.6)", 
+        padding: "18px", 
+        borderRadius: "12px",
+        border: "1px solid #333",
+        boxSizing: "border-box",
+        minWidth: 0
+    },
+    label: {
+        display: "block",
+        fontSize: "0.85rem",
+        color: "#aaa",
+        fontWeight: "500",
+        marginBottom: "6px",
+        marginTop: "8px"
+    },
+    inputWrapper: {
+        width: "100%",
+        boxSizing: "border-box",
+        marginBottom: "8px"
+    },
+    input: { 
+        width: "100%",
+        boxSizing: "border-box",
+        padding: "10px 12px", 
+        background: "#2a2a2a", 
+        color: "white", 
+        border: "1px solid #444", 
+        borderRadius: "8px",
+        fontSize: "0.9rem",
+        transition: "all 0.2s"
+    },
+    footer: { 
+        padding: "20px 28px", 
+        textAlign: "right",
+        borderTop: "1px solid #333",
+        background: "rgba(26, 26, 26, 0.5)"
+    },
+    saveBtn: { 
+        background: "#fab005", 
+        color: "black", 
+        padding: "12px 28px", 
+        border: "none", 
+        borderRadius: "8px", 
+        fontWeight: "bold", 
+        cursor: "pointer",
+        fontSize: "1rem",
+        transition: "all 0.2s",
+        boxShadow: "0 4px 12px rgba(250, 176, 5, 0.3)"
+    },
+    toggleContainer: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: "10px",
+        background: "#2a2a2a",
+        padding: "10px 14px",
+        borderRadius: "8px",
+        border: "1px solid #333",
+        transition: "all 0.2s"
+    },
+    toggleLabel: {
+        fontSize: "0.9rem",
+        color: "#e0e0e0",
+        fontWeight: "500"
+    },
+    switch: {
+        position: "relative",
+        display: "inline-block",
+        width: "48px",
+        height: "24px",
+        cursor: "pointer"
+    },
+    slider: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: "24px",
+        transition: "0.3s",
+        boxShadow: "inset 0 2px 4px rgba(0,0,0,0.3)"
+    }
 };
