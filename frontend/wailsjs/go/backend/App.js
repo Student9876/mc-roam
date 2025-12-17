@@ -18,6 +18,10 @@ export function CreateServer(arg1, arg2, arg3) {
   return window['go']['backend']['App']['CreateServer'](arg1, arg2, arg3);
 }
 
+export function DeleteServer(arg1, arg2) {
+  return window['go']['backend']['App']['DeleteServer'](arg1, arg2);
+}
+
 export function FindProcessLockingFile(arg1) {
   return window['go']['backend']['App']['FindProcessLockingFile'](arg1);
 }
@@ -68,6 +72,10 @@ export function Log(arg1) {
 
 export function Login(arg1, arg2) {
   return window['go']['backend']['App']['Login'](arg1, arg2);
+}
+
+export function PurgeRemote(arg1) {
+  return window['go']['backend']['App']['PurgeRemote'](arg1);
 }
 
 export function Register(arg1, arg2) {

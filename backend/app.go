@@ -155,6 +155,11 @@ func (a *App) GetMyServers(username string) []ServerGroup {
 		return []ServerGroup{}
 	}
 
+	// Map owner_id to owner for frontend compatibility
+	for i := range servers {
+		servers[i].Owner = servers[i].OwnerID
+	}
+
 	return servers
 }
 
@@ -402,7 +407,7 @@ token = %s
 
 // Update this function to accept the folder name!
 func (a *App) CheckCloudExists(folderName string) bool {
-	// Construct the path: mc-remote:server-12345
+	// Construct the path: mc-remote:server-123
 	fullPath := "mc-remote:" + folderName
 	cmd := exec.Command("./rclone.exe", "lsd", fullPath, "--config", "./rclone.conf")
 	if err := cmd.Run(); err != nil {
@@ -437,4 +442,58 @@ func (a *App) StopTunnel() error {
 // getInstancePath generates a unique folder for each server locally
 func (a *App) getInstancePath(serverID string) string {
 	return filepath.Join("instances", serverID)
+}
+
+// DeleteServer removes the server from DB, Local Disk, and Cloud
+// DeleteServer removes the server from DB, Local Disk, and Cloud
+func (a *App) DeleteServer(serverID string, username string) string {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// 1. Fetch Server to check ownership
+	var serverDoc ServerGroup
+	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&serverDoc)
+	if err != nil {
+		return "Error: Server not found."
+	}
+
+	// 2. SECURITY CHECK (The Fix)
+	// We check 'OwnerID' because that is what is stored in your MongoDB
+	if serverDoc.OwnerID != username {
+		return "Error: Only the server owner can delete this server."
+	}
+
+	// 3. Safety Check: Is it running?
+	if serverDoc.Lock.IsRunning {
+		return "Error: Stop the server before deleting it."
+	}
+
+	// 4. Delete from Database
+	_, err = collection.DeleteOne(ctx, bson.M{"_id": serverID})
+	if err != nil {
+		return "Error: Failed to delete from DB."
+	}
+
+	// 5. Delete Local Files
+	localPath := a.getInstancePath(serverID)
+	err = os.RemoveAll(localPath)
+	if err != nil {
+		a.Log("⚠️ Warning: Could not fully delete local files: " + err.Error())
+	} else {
+		a.Log("🗑️ Deleted local files.")
+	}
+
+	// 6. Delete Cloud Files (Background)
+	go func() {
+		// Matches the folder name format used in your rclone sync
+		err := a.PurgeRemote("server-" + serverID)
+		if err != nil {
+			a.Log("⚠️ Failed to delete cloud files: " + err.Error())
+		} else {
+			a.Log("🔥 Deleted cloud backup.")
+		}
+	}()
+
+	return "Success"
 }

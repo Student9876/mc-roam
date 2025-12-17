@@ -41,6 +41,7 @@ export namespace backend {
 	    id: string;
 	    name: string;
 	    owner_id: string;
+	    owner: string;
 	    members: string[];
 	    lock: ServerLock;
 	    invite_code: string;
@@ -54,6 +55,7 @@ export namespace backend {
 	        this.id = source["id"];
 	        this.name = source["name"];
 	        this.owner_id = source["owner_id"];
+	        this.owner = source["owner"];
 	        this.members = source["members"];
 	        this.lock = this.convertValues(source["lock"], ServerLock);
 	        this.invite_code = source["invite_code"];

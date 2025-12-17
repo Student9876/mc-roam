@@ -16,6 +16,7 @@ type ServerGroup struct {
 	ID      string   `bson:"_id,omitempty" json:"id"`
 	Name    string   `bson:"name" json:"name"`
 	OwnerID string   `bson:"owner_id" json:"owner_id"`
+	Owner   string   `bson:"-" json:"owner"` // Computed field, not stored in DB
 	Members []string `bson:"members" json:"members"`
 
 	// --- NEW FIELD ---

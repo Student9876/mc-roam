@@ -92,3 +92,21 @@ func EnsureLocalFolder(path string) {
 		os.MkdirAll(path, 0755)
 	}
 }
+
+// PurgeRemote completely deletes a folder from the cloud
+func (a *App) PurgeRemote(remotePath string) error {
+	// rclone purge mc-remote:server-srv_123 ...
+	remoteName := "mc-remote:" + remotePath
+	a.Log(fmt.Sprintf("🔥 Deleting Cloud Data: %s", remoteName))
+
+	args := []string{
+		"purge", remoteName,
+		"--config", "./rclone.conf",
+	}
+
+	cmd := exec.Command("./rclone.exe", args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+
+	// We don't need to stream logs for this, just run it
+	return cmd.Run()
+}
