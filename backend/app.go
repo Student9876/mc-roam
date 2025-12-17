@@ -246,6 +246,17 @@ func (a *App) StartServer(serverID string, username string) string {
 		return "Error: Server is already running!"
 	}
 
+	// --- NEW: PRE-CHECK CLOUD STATUS ---
+	// Before we try to Sync, check if the folder even exists.
+	if !a.CheckCloudExists() {
+		// Folder is missing! This is a new server.
+		// 1. Unlock the database so the UI doesn't get stuck
+		a.forceUnlock(serverID)
+
+		// 2. Return the specific error keyword the Frontend is waiting for
+		return "Error: directory not found (setup required)"
+	}
+	// -----------------------------------
 	// --- NEW: TRIGGER SYNC ---
 	// 1. Ensure local world folder exists
 	localServer := "./minecraft_server"
@@ -255,10 +266,11 @@ func (a *App) StartServer(serverID string, username string) string {
 	// We are syncing the 'world' folder from the remote
 	err = a.RunSync(SyncDown, "minecraft-server", localServer)
 	if err != nil {
-		// If sync fails, release the lock immediately so we aren't stuck
 		a.StopServer(serverID, username)
 		return fmt.Sprintf("Error: Sync failed: %v", err)
 	}
+
+	
 	// --- NEW: LAUNCH THE GAME ---
 	err = a.RunMinecraftServer()
 	if err != nil {
@@ -385,4 +397,31 @@ client_secret = %s
 token = %s
 `
 	return fmt.Sprintf(configTemplate, clientID, clientSecret, tokenJSON)
+}
+
+// CheckCloudExists checks if the 'minecraft-server' folder exists in the cloud
+func (a *App) CheckCloudExists() bool {
+	// Must check the specific SUBFOLDER
+	cmd := exec.Command("./rclone.exe", "lsd", "mc-remote:minecraft-server", "--config", "./rclone.conf")
+	if err := cmd.Run(); err != nil {
+		return false // Command failed = Folder not found
+	}
+	return true
+}
+
+// forceUnlock resets the server status without syncing files
+func (a *App) forceUnlock(serverID string) {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{"_id": serverID}
+	update := bson.M{
+		"$set": bson.M{
+			"lock.is_running": false,
+			"lock.hosted_by":  "",
+			"lock.hosted_at":  time.Time{},
+		},
+	}
+	collection.UpdateOne(ctx, filter, update)
 }

@@ -6,6 +6,10 @@ export function AuthorizeDrive(arg1, arg2) {
   return window['go']['backend']['App']['AuthorizeDrive'](arg1, arg2);
 }
 
+export function CheckCloudExists() {
+  return window['go']['backend']['App']['CheckCloudExists']();
+}
+
 export function CreateServer(arg1, arg2, arg3) {
   return window['go']['backend']['App']['CreateServer'](arg1, arg2, arg3);
 }
@@ -20,6 +24,10 @@ export function Greet(arg1) {
 
 export function InjectConfig(arg1) {
   return window['go']['backend']['App']['InjectConfig'](arg1);
+}
+
+export function InstallServer(arg1) {
+  return window['go']['backend']['App']['InstallServer'](arg1);
 }
 
 export function JoinServer(arg1, arg2) {

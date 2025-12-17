@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GetMyServers, CreateServer, JoinServer, StartServer, StopServer, AuthorizeDrive } from '../../wailsjs/go/backend/App';
+import { GetMyServers, CreateServer, JoinServer, StartServer, StopServer, AuthorizeDrive, InstallServer } from '../../wailsjs/go/backend/App';
 
 export default function Dashboard() {
     const [servers, setServers] = useState([]);
@@ -8,6 +8,10 @@ export default function Dashboard() {
     const [inviteCode, setInviteCode] = useState(""); // New State
     const [rcloneConf, setRcloneConf] = useState("");
     const [isAuthorizing, setIsAuthorizing] = useState(false); // UI Loading state
+
+    const [needsSetup, setNeedsSetup] = useState(false); // Controls the Install Modal
+    const [activeServerId, setActiveServerId] = useState(null); // Which server are we trying to start?
+    const [isInstalling, setIsInstalling] = useState(false); // Loading spinner for download
 
     const currentUser = sessionStorage.getItem("mc_username") || "Unknown";
     const navigate = useNavigate();
@@ -52,11 +56,23 @@ export default function Dashboard() {
     };
 
     const handleStart = async (serverId) => {
+        // 1. First, check if the cloud has files
+        // (This assumes we already injected config. 
+        //  Wait... StartServer usually injects config. 
+        //  We might need to call StartServer, let it fail, and catch the error?
+        //  Actually, let's keep it simple: Let StartServer fail, return a specific error string.)
+
         const result = await StartServer(serverId, currentUser);
-        if (result.startsWith("Error")) {
+
+        // CATCH THE "Directory not found" ERROR
+        if (result.includes("directory not found") || result.includes("setup required")) {
+            // Trigger Setup Mode!
+            setActiveServerId(serverId);
+            setNeedsSetup(true);
+        } else if (result.startsWith("Error")) {
             alert(result);
         } else {
-            loadServers(); // Refresh to see the green light
+            loadServers();
         }
     };
 
@@ -67,6 +83,27 @@ export default function Dashboard() {
         } else {
             loadServers(); // Refresh to see the offline status
         }
+    };
+
+    // New Function: Run the Installer
+    const handleInstall = async () => {
+        setIsInstalling(true);
+        // 1. Install Files
+        const installRes = await InstallServer("1.20.4");
+        if (installRes.startsWith("Error")) {
+            alert(installRes);
+            setIsInstalling(false);
+            return;
+        }
+
+        // 2. Force a "Sync Up" to create the cloud folder
+        // We can cheat by calling StopServer (which triggers Sync Up)
+        await StopServer(activeServerId, currentUser);
+
+        // 3. Close Modal and Refresh
+        setIsInstalling(false);
+        setNeedsSetup(false);
+        alert("Installation Complete! You can now Start the server.");
     };
 
     return (
@@ -188,6 +225,33 @@ export default function Dashboard() {
                     );
                 })}
             </div>
+
+            {/* INSTALLATION MODAL */}
+            {needsSetup && (
+                <div style={{
+                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+                    background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center"
+                }}>
+                    <div style={{ background: "#2a2a2a", padding: "2rem", borderRadius: "10px", textAlign: "center", maxWidth: "400px" }}>
+                        <h2>🆕 New Server Detected</h2>
+                        <p>This server is empty. Would you like to install Minecraft (1.20.4)?</p>
+
+                        <div style={{ marginTop: "20px", display: "flex", gap: "10px", justifyContent: "center" }}>
+                            <button className="btn"
+                                onClick={() => setNeedsSetup(false)}
+                                style={{ background: "#444" }}>
+                                Cancel
+                            </button>
+                            <button className="btn"
+                                onClick={handleInstall}
+                                disabled={isInstalling}
+                                style={{ background: "#fab005", color: "black" }}>
+                                {isInstalling ? "Downloading..." : "⬇️ Install & Fix"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

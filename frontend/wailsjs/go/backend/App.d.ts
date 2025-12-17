@@ -4,6 +4,8 @@ import {backend} from '../models';
 
 export function AuthorizeDrive(arg1:string,arg2:string):Promise<string>;
 
+export function CheckCloudExists():Promise<boolean>;
+
 export function CreateServer(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function GetMyServers(arg1:string):Promise<Array<backend.ServerGroup>>;
@@ -11,6 +13,8 @@ export function GetMyServers(arg1:string):Promise<Array<backend.ServerGroup>>;
 export function Greet(arg1:string):Promise<string>;
 
 export function InjectConfig(arg1:string):Promise<void>;
+
+export function InstallServer(arg1:string):Promise<string>;
 
 export function JoinServer(arg1:string,arg2:string):Promise<string>;
 
