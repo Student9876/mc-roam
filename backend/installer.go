@@ -1,47 +1,75 @@
 package backend
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // InstallServer downloads the server and pushes it to the cloud
 // InstallServer downloads files and uploads them to a SERVER-SPECIFIC cloud folder
 func (a *App) InstallServer(serverID string) string {
 
-	// 1. Calculate Paths (DYNAMICALLY)
+	// 1. Get Server Details from Database
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var server ServerGroup
+	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&server)
+	if err != nil {
+		return fmt.Sprintf("Error: Server not found: %v", err)
+	}
+
+	// 2. Get Version Details (MATCHING TYPE AND VERSION)
+	vCollection := DB.Client.Database("mc_roam").Collection("versions")
+	var versionDoc ServerVersion
+
+	// Query: WHERE type = server.Type AND version = server.Version
+	filter := bson.M{
+		"type":    server.Type,
+		"version": server.Version,
+	}
+
+	err = vCollection.FindOne(ctx, filter).Decode(&versionDoc)
+	if err != nil {
+		return fmt.Sprintf("Error: Version not found for %s %s: %v", server.Type, server.Version, err)
+	}
+
+	// 3. Calculate Paths (DYNAMICALLY)
 	localInstance := a.getInstancePath(serverID) // e.g., instances/srv_12345
 	remoteFolder := "server-" + serverID         // e.g., server-srv_12345 (Unique in Cloud!)
 
-	// 2. WIPE OLD DATA (Local)
+	// 4. WIPE OLD DATA (Local)
 	a.Log(fmt.Sprintf("🧹 Cleaning up instance files in %s...", localInstance))
 	os.RemoveAll(localInstance)
 
-	// 3. Re-create Directory
+	// 5. Re-create Directory
 	if err := os.MkdirAll(localInstance, 0755); err != nil {
 		return fmt.Sprintf("Error: Could not create folder: %v", err)
 	}
 
-	// 4. Download Server Jar
-	downloadUrl := "https://api.papermc.io/v2/projects/paper/versions/1.20.4/builds/496/downloads/paper-1.20.4-496.jar"
-
-	a.Log("⬇️ Downloading Server Jar...")
-	err := downloadFile(downloadUrl, filepath.Join(localInstance, "server.jar"))
+	// 6. Download Server Jar using URL from database
+	a.Log(fmt.Sprintf("⬇️ Downloading %s %s Server Jar...", server.Type, server.Version))
+	err = downloadFile(versionDoc.Url, filepath.Join(localInstance, "server.jar"))
 	if err != nil {
 		return fmt.Sprintf("Error: Download failed: %v", err)
 	}
 
-	// 5. Write Config Files
+	// 7. Write Config Files
 	eulaContent := "eula=true\n"
 	os.WriteFile(filepath.Join(localInstance, "eula.txt"), []byte(eulaContent), 0644)
 
 	propsContent := "online-mode=false\nspawn-protection=0\n"
 	os.WriteFile(filepath.Join(localInstance, "server.properties"), []byte(propsContent), 0644)
 
-	// 6. UPLOAD TO SPECIFIC CLOUD FOLDER
+	// 8. UPLOAD TO SPECIFIC CLOUD FOLDER
 	a.Log(fmt.Sprintf("🚀 Uploading to Cloud Folder: %s...", remoteFolder))
 
 	// CRITICAL FIX: Use 'remoteFolder' variable, NOT "minecraft-server"

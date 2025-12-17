@@ -40,11 +40,13 @@ export namespace backend {
 	export class ServerGroup {
 	    id: string;
 	    name: string;
+	    type: string;
+	    version: string;
+	    invite_code: string;
 	    owner_id: string;
 	    owner: string;
 	    members: string[];
 	    lock: ServerLock;
-	    invite_code: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ServerGroup(source);
@@ -54,11 +56,13 @@ export namespace backend {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.name = source["name"];
+	        this.type = source["type"];
+	        this.version = source["version"];
+	        this.invite_code = source["invite_code"];
 	        this.owner_id = source["owner_id"];
 	        this.owner = source["owner"];
 	        this.members = source["members"];
 	        this.lock = this.convertValues(source["lock"], ServerLock);
-	        this.invite_code = source["invite_code"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -116,6 +120,24 @@ export namespace backend {
 	        this["allow-nether"] = source["allow-nether"];
 	        this["force-gamemode"] = source["force-gamemode"];
 	        this["spawn-protection"] = source["spawn-protection"];
+	    }
+	}
+	export class ServerVersion {
+	    id: string;
+	    version: string;
+	    type: string;
+	    url: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ServerVersion(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.version = source["version"];
+	        this.type = source["type"];
+	        this.url = source["url"];
 	    }
 	}
 

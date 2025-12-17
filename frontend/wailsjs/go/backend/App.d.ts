@@ -8,7 +8,7 @@ export function CheckCloudExists(arg1:string):Promise<boolean>;
 
 export function CleanLocks(arg1:string):Promise<void>;
 
-export function CreateServer(arg1:string,arg2:string,arg3:string):Promise<string>;
+export function CreateServer(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
 
 export function DeleteServer(arg1:string,arg2:string):Promise<string>;
 
@@ -19,6 +19,8 @@ export function ForceKillPort(arg1:number):Promise<void>;
 export function GetMyServers(arg1:string):Promise<Array<backend.ServerGroup>>;
 
 export function GetServerOptions(arg1:string):Promise<backend.ServerProps>;
+
+export function GetVersions():Promise<Array<backend.ServerVersion>>;
 
 export function Greet(arg1:string):Promise<string>;
 
@@ -47,6 +49,8 @@ export function RunMinecraftServer(arg1:string,arg2:number):Promise<void>;
 export function RunSync(arg1:backend.SyncDirection,arg2:string,arg3:string):Promise<void>;
 
 export function SaveServerOptions(arg1:string,arg2:backend.ServerProps):Promise<string>;
+
+export function SeedVersions():Promise<void>;
 
 export function StartServer(arg1:string,arg2:string):Promise<string>;
 

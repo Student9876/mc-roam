@@ -38,6 +38,8 @@ func (a *App) Startup(ctx context.Context) {
 		a.Log(fmt.Sprintf("❌ CRITICAL: Database connection failed: %v", err))
 	}
 	// --------------------------------
+
+	a.SeedVersions()
 }
 
 // Greet returns a greeting for the given name
@@ -110,7 +112,7 @@ func (a *App) Login(username string, password string) string {
 // --- SERVER MANAGEMENT METHODS ---
 
 // CreateServer creates a new server group (UPDATED)
-func (a *App) CreateServer(serverName string, ownerUsername string, configString string) string {
+func (a *App) CreateServer(serverName string, serverType string, version string, ownerUsername string, configString string) string {
 	collection := DB.Client.Database("mc_roam").Collection("servers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -120,6 +122,8 @@ func (a *App) CreateServer(serverName string, ownerUsername string, configString
 	newServer := ServerGroup{
 		ID:           newID,
 		Name:         serverName,
+		Type:         serverType, // <--- SAVE TYPE (e.g., "Paper", "Vanilla")
+		Version:      version,    // <--- SAVE VERSION (e.g., "1.20.4")
 		OwnerID:      ownerUsername,
 		Members:      []string{ownerUsername},
 		InviteCode:   generateInviteCode(),

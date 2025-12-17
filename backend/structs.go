@@ -11,21 +11,30 @@ type User struct {
 
 // --- ADD THIS BELOW ---
 
+// ServerVersion represents a downloadable jar file
+type ServerVersion struct {
+	ID      string `bson:"_id,omitempty" json:"id"`
+	Version string `bson:"version" json:"version"` // e.g., "1.20.4"
+	Type    string `bson:"type" json:"type"`       // e.g., "Paper", "Vanilla"
+	Url     string `bson:"url" json:"url"`         // Direct download link
+}
+
 // ServerGroup represents a Minecraft Server Group
 type ServerGroup struct {
-	ID      string   `bson:"_id,omitempty" json:"id"`
-	Name    string   `bson:"name" json:"name"`
-	OwnerID string   `bson:"owner_id" json:"owner_id"`
-	Owner   string   `bson:"-" json:"owner"` // Computed field, not stored in DB
-	Members []string `bson:"members" json:"members"`
+	ID   string `bson:"_id" json:"id"`
+	Name string `bson:"name" json:"name"`
 
-	// --- NEW FIELD ---
-	// Stores the entire content of rclone.conf
-	RcloneConfig string `bson:"rclone_config" json:"-"` // JSON "-" means don't send to frontend UI for safety
-	// -----------------
+	// --- NEW FIELDS ---
+	Type    string `bson:"type" json:"type"`       // e.g. "Paper"
+	Version string `bson:"version" json:"version"` // e.g. "1.20.4"
+	// ------------------
 
-	Lock       ServerLock `bson:"lock" json:"lock"`
-	InviteCode string     `bson:"invite_code" json:"invite_code"`
+	InviteCode   string     `bson:"invite_code" json:"invite_code"`
+	OwnerID      string     `bson:"owner_id" json:"owner_id"`
+	Owner        string     `bson:"-" json:"owner"`
+	Members      []string   `bson:"members" json:"members"`
+	RcloneConfig string     `bson:"rclone_config" json:"-"`
+	Lock         ServerLock `bson:"lock" json:"lock"`
 }
 
 type ServerLock struct {

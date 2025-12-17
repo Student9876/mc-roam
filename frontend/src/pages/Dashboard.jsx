@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Backend
-import { GetMyServers, CreateServer, JoinServer, StartServer, StopServer, AuthorizeDrive, InstallServer, DeleteServer } from '../../wailsjs/go/backend/App';
+import { GetMyServers, CreateServer, JoinServer, StartServer, StopServer, AuthorizeDrive, InstallServer, DeleteServer, GetVersions } from '../../wailsjs/go/backend/App';
 import { EventsOn } from '../../wailsjs/runtime/runtime';
 // Components
 import SettingsModal from '../components/SettingsModal';
@@ -10,6 +10,12 @@ import ServerCard from '../components/ServerCard'; // <--- IMPORT THE NEW COMPON
 
 export default function Dashboard() {
     const [servers, setServers] = useState([]);
+
+    // Version selection state
+    const [allVersions, setAllVersions] = useState([]); // Raw data from DB
+    const [availableTypes, setAvailableTypes] = useState([]);
+    const [selectedType, setSelectedType] = useState("");
+    const [selectedVersion, setSelectedVersion] = useState("");
 
     // UI State
     const [view, setView] = useState("dashboard");
@@ -31,7 +37,14 @@ export default function Dashboard() {
     const currentUser = sessionStorage.getItem("mc_username") || "Unknown";
     const navigate = useNavigate();
 
-    useEffect(() => { loadServers() }, []);
+    useEffect(() => { 
+        loadServers();
+    }, []);
+
+    // Use a separate effect for versions to isolate errors
+    useEffect(() => {
+        loadVersions();
+    }, []);
 
     // Listen for public address events
     useEffect(() => {
@@ -49,6 +62,42 @@ export default function Dashboard() {
         setServers(mappedList);
     };
 
+    const loadVersions = async () => {
+        try {
+            const list = await GetVersions();
+            
+            // 🛑 SAFETY CHECK: If list is null/undefined, stop here to prevent crash
+            if (!list || list.length === 0) {
+                console.warn("No versions found in DB.");
+                return;
+            }
+
+            setAllVersions(list);
+
+            // Extract unique types safely
+            const types = [...new Set(list.map(v => v.type))];
+            setAvailableTypes(types);
+
+            // Select defaults
+            if (types.length > 0) {
+                const firstType = types[0];
+                setSelectedType(firstType);
+                
+                const vForType = list.filter(v => v.type === firstType);
+                if (vForType.length > 0) setSelectedVersion(vForType[0].version);
+            }
+        } catch (err) {
+            console.error("Critical Error loading versions:", err);
+        }
+    };
+
+    const handleTypeChange = (newType) => {
+        setSelectedType(newType);
+        const vForType = allVersions.filter(v => v.type === newType);
+        if (vForType.length > 0) setSelectedVersion(vForType[0].version);
+        else setSelectedVersion("");
+    };
+
     // --- ACTIONS ---
     const handleAuthorize = async () => {
         setIsAuthorizing(true);
@@ -58,8 +107,8 @@ export default function Dashboard() {
     };
 
     const handleCreate = async () => {
-        if (!newServerName || !rcloneConf) return;
-        await CreateServer(newServerName, currentUser, rcloneConf);
+        if (!newServerName || !rcloneConf || !selectedVersion) return;
+        await CreateServer(newServerName, selectedType, selectedVersion, currentUser, rcloneConf);
         setNewServerName("");
         setRcloneConf("");
         setView("dashboard");
@@ -184,9 +233,48 @@ export default function Dashboard() {
                 {view === "create" && (
                     <div style={{ maxWidth: "500px" }}>
                         <h1 style={styles.pageTitle}>Create New Server</h1>
+                        
                         <div style={styles.formGroup}>
                             <label>Server Name</label>
                             <input style={styles.input} value={newServerName} onChange={e => setNewServerName(e.target.value)} placeholder="e.g. Survival World" />
+                        </div>
+
+                        {/* VERSION SELECTION ROW */}
+                        <div style={{ display: "flex", gap: "15px", marginBottom: "20px" }}>
+                            
+                            {/* 1. TYPE SELECTOR */}
+                            <div style={{ flex: 1 }}>
+                                <label style={{display: "block", marginBottom: "8px", fontSize: "0.9rem", color: "#aaa"}}>Server Type</label>
+                                <select 
+                                    style={styles.input} 
+                                    value={selectedType} 
+                                    onChange={(e) => handleTypeChange(e.target.value)}
+                                    disabled={availableTypes.length === 0}
+                                >
+                                    {availableTypes.length === 0 && <option>Loading...</option>}
+                                    {availableTypes.map(t => (
+                                        <option key={t} value={t}>{t}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* 2. VERSION SELECTOR */}
+                            <div style={{ flex: 1 }}>
+                                <label style={{display: "block", marginBottom: "8px", fontSize: "0.9rem", color: "#aaa"}}>Game Version</label>
+                                <select 
+                                    style={styles.input} 
+                                    value={selectedVersion} 
+                                    onChange={(e) => setSelectedVersion(e.target.value)}
+                                    disabled={!selectedType}
+                                >
+                                    {allVersions
+                                        .filter(v => v.type === selectedType)
+                                        .map(v => (
+                                            <option key={v.id} value={v.version}>{v.version}</option>
+                                        ))
+                                    }
+                                </select>
+                            </div>
                         </div>
 
                         <div style={styles.formGroup}>
@@ -256,8 +344,8 @@ const styles = {
 
     // Components
     pageTitle: { fontSize: "1.5rem", marginBottom: "1.5rem", borderBottom: "1px solid #333", paddingBottom: "10px" },
-    grid: { 
-        display: "grid", 
+    grid: {
+        display: "grid",
         gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
         gap: "1.5rem",
         width: "100%",
