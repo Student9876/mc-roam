@@ -1,10 +1,11 @@
 package backend
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
-	// "path/filepath"
+	"syscall" // Required for hiding the window
 )
 
 // SyncDirection defines if we are Pulling (Down) or Pushing (Up)
@@ -15,18 +16,13 @@ const (
 	SyncUp   SyncDirection = "up"   // Local -> Cloud
 )
 
-// RunSync executes the Rclone command
+// RunSync executes the Rclone command and streams output to UI
 func (a *App) RunSync(direction SyncDirection, remotePath string, localPath string) error {
 	// 1. Where is the rclone executable?
-	// In production, this might be in a resource folder. For now, it's in the current dir.
 	rcloneBin := "./rclone.exe"
 
 	// 2. Define source and destination
 	var source, dest string
-
-	// For this test, we are using a temporary "Remote" name called 'mc-remote'
-	// We assume the user has ALREADY run 'rclone config' manually for this step.
-	// Later, we will automate the config injection.
 	remoteName := "mc-remote:" + remotePath
 
 	if direction == SyncDown {
@@ -37,29 +33,57 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 		dest = remoteName
 	}
 
-	a.Log(fmt.Sprintf("🔄 Syncing (%s): %s -> %s", direction, source, dest))
+	a.Log(fmt.Sprintf("🔄 Syncing (%s)...", direction))
 
-	// 3. The Command: Add --config flag
-	// This forces Rclone to use the credentials we just injected
+	// 3. The Command
 	args := []string{
 		"sync", source, dest,
 		"--progress",
+		"--transfers", "8", // Speed up small file transfers
 		"--create-empty-src-dirs",
 		"--config", "./rclone.conf",
 		"--exclude", "session.lock",
 		"--exclude", "logs/**", // Skip logs
 		"--exclude", "cache/**", // Skip cache
-		"--exclude", "libraries/**", // Skip libraries (Java downloads them automatically)
+		"--exclude", "libraries/**", // Skip libraries
 		"--exclude", "versions/**", // Skip version data
+		"--exclude", "crash-reports/**", // Skip crash reports
 	}
 
 	cmd := exec.Command(rcloneBin, args...)
 
-	// Connect output to console so we can see what's happening in VS Code terminal
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// Windows-specific: Hide the flashing console window
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
-	return cmd.Run()
+	// 4. CAPTURE OUTPUT
+	// We combine Stdout and Stderr to catch both progress and errors
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	cmd.Stderr = cmd.Stdout
+
+	// 5. Start
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	// 6. Stream Logs to UI (Line by Line)
+	// This makes the "Transferring..." lines appear in your black terminal box
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		text := scanner.Text()
+		// Optional: Filter out super noisy lines if you want,
+		// but for now, seeing the progress is satisfying.
+		a.Log("[Sync]: " + text)
+	}
+
+	// 7. Wait for finish
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("sync failed: %w", err)
+	}
+
+	return nil
 }
 
 // EnsureLocalFolder makes sure the 'world' folder exists before we try to sync to it

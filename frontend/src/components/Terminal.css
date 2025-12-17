@@ -1,0 +1,86 @@
+.terminal-wrapper {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #1e1e1e;
+    border-top: 1px solid #333;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+    transition: height 0.3s ease-in-out;
+}
+
+.terminal-header {
+    background-color: #252526; /* VS Code Header Color */
+    height: 30px;
+    padding: 0 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid #1e1e1e;
+}
+
+.terminal-header:hover {
+    background-color: #2a2d2e;
+}
+
+.terminal-title {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #cccccc;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.terminal-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden; /* No horizontal scrollbar */
+    padding: 10px 15px;
+    background-color: #1e1e1e;
+}
+
+/* --- THE PILL SCROLLBAR --- */
+.terminal-body::-webkit-scrollbar {
+    width: 10px;
+}
+
+.terminal-body::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+.terminal-body::-webkit-scrollbar-thumb {
+    background-color: #444; /* Dark Grey Thumb */
+    border-radius: 20px;    /* Pill Shape */
+    border: 3px solid #1e1e1e; /* Creates padding around the pill */
+}
+
+.terminal-body::-webkit-scrollbar-thumb:hover {
+    background-color: #555;
+}
+
+/* --- LOG LINES --- */
+.log-line {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace; /* True Terminal Font */
+    font-size: 0.8rem;
+    line-height: 1.4;
+    text-align: left;       /* Force Left Alignment */
+    white-space: pre-wrap;  /* Wrap text, preserve newlines */
+    word-break: break-word; /* Break long hash strings */
+    margin-bottom: 2px;
+}
+
+.timestamp {
+    color: #666;
+    margin-right: 12px;
+    user-select: none;
+    font-size: 0.75rem;
+}

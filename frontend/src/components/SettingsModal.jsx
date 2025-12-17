@@ -101,11 +101,19 @@ function Toggle({ label, checked, onChange }) {
 const styles = {
     modalOverlay: {
         position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-        background: "rgba(0,0,0,0.85)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000
+        background: "rgba(0,0,0,0.85)",
+        display: "flex", justifyContent: "center", alignItems: "center",
+        zIndex: 10000 // <--- FIX: Higher than terminal (9999)
     },
     modalContent: {
-        background: "#222", padding: "20px", borderRadius: "12px", width: "800px", maxHeight: "90vh", overflowY: "auto",
-        border: "1px solid #444", color: "white"
+        background: "#222",
+        padding: "20px",
+        borderRadius: "12px",
+        width: "800px",
+        maxHeight: "calc(90vh - 200px)", // <--- FIX: Subtract terminal height
+        overflowY: "auto",
+        border: "1px solid #444",
+        color: "white"
     },
     header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" },
     closeBtn: { background: "transparent", border: "none", color: "#888", fontSize: "1.5rem", cursor: "pointer" },
