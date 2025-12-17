@@ -88,17 +88,17 @@
 /* Add these to your existing Terminal.css */
 
 .sync-footer {
-    background-color: #1a1a1a;
-    border-top: 1px solid #333;
+    background: linear-gradient(135deg, #1a1a1a 0%, #242424 100%);
+    border-top: 1px solid #444;
     padding: 6px 15px;
     font-family: 'Consolas', 'Monaco', monospace;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     display: flex;
     align-items: center;
     gap: 10px;
     color: #e0e0e0;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
-    animation: slideUp 0.3s ease-out;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+    min-height: 26px;
 }
 
 .sync-spinner {

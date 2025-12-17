@@ -6,8 +6,8 @@ export default function Terminal() {
     const [logs, setLogs] = useState([]);
     const [isMinimized, setIsMinimized] = useState(false);
 
-    // NEW: Sync State for the "Sticky Footer"
-    const [syncStatus, setSyncStatus] = useState(null);
+    // Sync State for progress tracking
+    const [syncProgress, setSyncProgress] = useState(null); // { percent: 50, message: "Downloading..." }
     const syncTimeoutRef = useRef(null);
 
     const bufferRef = useRef([]);
@@ -17,23 +17,22 @@ export default function Terminal() {
     useEffect(() => {
         // Listener
         const stop = EventsOn("server-log", (msg) => {
-            // 1. IS THIS A SYNC PROGRESS LOG? (Filter it out of main history)
+            // Check if this is a sync progress update
             if (msg.startsWith("[Sync]:")) {
                 handleSyncLog(msg);
-                return; // Stop here, don't add to main logs
             }
-
-            // 2. Normal Log? Add to buffer
+            
+            // Add ALL logs to terminal (no filtering)
             bufferRef.current.push(msg);
         });
 
-        // Flusher (Every 100ms)
+        // Flusher (Every 50ms for faster updates)
         const interval = setInterval(() => {
             if (bufferRef.current.length > 0) {
-                setLogs(prev => [...prev, ...bufferRef.current].slice(-500));
+                setLogs(prev => [...prev, ...bufferRef.current].slice(-1000)); // Keep more logs
                 bufferRef.current = [];
             }
-        }, 100);
+        }, 50); // Faster flush
 
         return () => {
             stop && stop();
@@ -41,33 +40,46 @@ export default function Terminal() {
         };
     }, []);
 
-    // --- NEW: Handle Sync Logs Logic ---
+    // --- Handle Sync Logs with Progress Tracking ---
     const handleSyncLog = (msg) => {
-        let meaningfulText = null;
+        let progressData = null;
 
-        // 1. Catch Custom Status Messages (Immediate Feedback)
+        // 1. Catch Status Messages
         if (msg.includes("STATUS:")) {
-            // Extracts: "⬇️ Downloading Server Data... DO NOT CLOSE!"
-            meaningfulText = msg.split("STATUS:")[1].trim();
+            const statusText = msg.split("STATUS:")[1].trim();
+            progressData = { percent: null, message: statusText };
         }
-        // 2. Catch Rclone Progress
-        else if (msg.includes("Transferred:") && msg.includes("%")) {
-            const parts = msg.split("Transferred:");
-            if (parts[1]) meaningfulText = `📦 Overall: ${parts[1].trim()}`;
+        // 2. Parse individual file progress - "Transferred: X / Y, Z%"
+        else if (msg.includes("Transferred:") && msg.includes("/")) {
+            // Extract transfer details
+            const transferMatch = msg.match(/Transferred:\s+(.+)/);
+            if (transferMatch) {
+                const detail = transferMatch[1].split(',')[0].trim();
+                progressData = { 
+                    percent: null, 
+                    message: `Transfer: ${detail}` 
+                };
+            }
         }
+        // 3. Catch individual file transfers
         else if (msg.includes(" * ")) {
             const parts = msg.split("*");
-            if (parts[1]) meaningfulText = `📄 File: ${parts[1].trim()}`;
+            if (parts[1]) {
+                progressData = { 
+                    percent: null, 
+                    message: `📄 ${parts[1].trim()}` 
+                };
+            }
         }
 
-        if (meaningfulText) {
-            setSyncStatus(meaningfulText);
+        if (progressData) {
+            setSyncProgress(progressData);
 
-            // Keep footer alive for 3s after the last update
+            // Keep footer alive for 1.5s after the last update
             if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
             syncTimeoutRef.current = setTimeout(() => {
-                setSyncStatus(null);
-            }, 3000);
+                setSyncProgress(null);
+            }, 500);
         }
     };
 
@@ -76,7 +88,7 @@ export default function Terminal() {
         if (!isMinimized && isAutoScroll.current) {
             endRef.current?.scrollIntoView({ behavior: "smooth" });
         }
-    }, [logs, isMinimized, syncStatus]); // Scroll when sync status updates too
+    }, [logs, isMinimized, syncProgress]);
 
     const handleScroll = (e) => {
         const { scrollTop, scrollHeight, clientHeight } = e.target;
@@ -85,7 +97,7 @@ export default function Terminal() {
     };
 
     return (
-        <div className="terminal-wrapper" style={{ height: isMinimized ? "30px" : "220px" }}>
+        <div className="terminal-wrapper" style={{ height: isMinimized ? "30px" : (syncProgress ? "250px" : "220px") }}>
 
             {/* Header */}
             <div className="terminal-header" onClick={() => setIsMinimized(!isMinimized)}>
@@ -107,25 +119,43 @@ export default function Terminal() {
                         </div>
                     )}
 
-                    {logs.map((log, i) => (
-                        <div key={i} className="log-line" style={{ color: getLogColor(log) }}>
-                            <span className="timestamp">
-                                {new Date().toLocaleTimeString('en-GB', { hour12: false })}
-                            </span>
-                            {log}
-                        </div>
-                    ))}
+                    {logs.map((log, i) => {
+                        const isSync = log.startsWith("[Sync]:");
+                        const isMC = log.includes("[MC]:");
+                        const isImportant = log.includes("✅") || log.includes("🚀") || log.includes("❌");
+                        
+                        return (
+                            <div 
+                                key={i} 
+                                className="log-line" 
+                                style={{ 
+                                    color: getLogColor(log),
+                                    backgroundColor: isImportant ? 'rgba(64, 192, 87, 0.05)' : 'transparent',
+                                    padding: isImportant ? '4px 8px' : '2px 0',
+                                    borderRadius: isImportant ? '4px' : '0',
+                                    marginBottom: isImportant ? '4px' : '2px'
+                                }}
+                            >
+                                <span className="timestamp">
+                                    {new Date().toLocaleTimeString('en-GB', { hour12: false })}
+                                </span>
+                                {formatLog(log)}
+                            </div>
+                        );
+                    })}
 
                     {/* Dummy div for auto-scroll */}
                     <div ref={endRef} />
                 </div>
             )}
 
-            {/* --- NEW: STICKY SYNC FOOTER --- */}
-            {!isMinimized && syncStatus && (
+            {/* --- SYNC PROGRESS FOOTER (Individual File Progress) --- */}
+            {!isMinimized && syncProgress && (
                 <div className="sync-footer">
                     <span className="sync-spinner">🔄</span>
-                    <span style={{ color: "#4dabf7", fontWeight: "bold" }}>{syncStatus}</span>
+                    <span style={{ color: "#4dabf7", fontWeight: "500", fontSize: "0.75rem", flex: 1 }}>
+                        {syncProgress.message}
+                    </span>
                 </div>
             )}
         </div>
@@ -138,5 +168,14 @@ function getLogColor(text) {
     if (text.includes("[MC]")) return "#f1c40f";
     if (text.includes("Success") || text.includes("✅") || text.includes("🚀")) return "#69db7c";
     if (text.includes("Public")) return "#4dabf7";
+    if (text.includes("[Sync]:")) return "#4dabf7";
     return "#d4d4d4";
+}
+
+function formatLog(text) {
+    // Remove redundant [Sync]: prefix for cleaner display
+    if (text.startsWith("[Sync]:")) {
+        return text.substring(7).trim();
+    }
+    return text;
 }
