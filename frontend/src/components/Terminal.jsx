@@ -6,10 +6,6 @@ export default function Terminal() {
     const [logs, setLogs] = useState([]);
     const [isMinimized, setIsMinimized] = useState(false);
 
-    // Sync State for progress tracking
-    const [syncProgress, setSyncProgress] = useState(null); // { percent: 50, message: "Downloading..." }
-    const syncTimeoutRef = useRef(null);
-
     const bufferRef = useRef([]);
     const endRef = useRef(null);
     const isAutoScroll = useRef(true);
@@ -17,12 +13,7 @@ export default function Terminal() {
     useEffect(() => {
         // Listener
         const stop = EventsOn("server-log", (msg) => {
-            // Check if this is a sync progress update
-            if (msg.startsWith("[Sync]:")) {
-                handleSyncLog(msg);
-            }
-
-            // Add ALL logs to terminal (no filtering)
+            // Add all logs to terminal (including detailed sync logs)
             bufferRef.current.push(msg);
         });
 
@@ -88,7 +79,7 @@ export default function Terminal() {
         if (!isMinimized && isAutoScroll.current) {
             endRef.current?.scrollIntoView({ behavior: "smooth" });
         }
-    }, [logs, isMinimized, syncProgress]);
+    }, [logs, isMinimized]);
 
     const handleScroll = (e) => {
         const { scrollTop, scrollHeight, clientHeight } = e.target;
@@ -97,7 +88,7 @@ export default function Terminal() {
     };
 
     return (
-        <div className="terminal-wrapper" style={{ height: isMinimized ? "30px" : (syncProgress ? "250px" : "220px") }}>
+        <div className="terminal-wrapper" style={{ height: isMinimized ? "30px" : "220px" }}>
 
             {/* Header */}
             <div className="terminal-header" onClick={() => setIsMinimized(!isMinimized)}>
@@ -150,14 +141,14 @@ export default function Terminal() {
             )}
 
             {/* --- SYNC PROGRESS FOOTER (Individual File Progress) --- */}
-            {!isMinimized && syncProgress && (
+            {/* {!isMinimized && syncProgress && (
                 <div className="sync-footer">
                     <span className="sync-spinner">🔄</span>
                     <span style={{ color: "#4dabf7", fontWeight: "500", fontSize: "0.75rem", flex: 1 }}>
                         {syncProgress.message}
                     </span>
                 </div>
-            )}
+            )} */}
         </div>
     );
 }
@@ -168,14 +159,38 @@ function getLogColor(text) {
     if (text.includes("[MC]")) return "#f1c40f";
     if (text.includes("Success") || text.includes("✅") || text.includes("🚀")) return "#69db7c";
     if (text.includes("Public")) return "#4dabf7";
-    if (text.includes("[Sync]:")) return "#4dabf7";
+    if (text.includes("[Sync]:")) return "#a78bfa";
+    if (text.includes("STARTING DOWNLOAD") || text.includes("STARTING UPLOAD")) return "#60a5fa";
+    if (text.includes("Transferred:") || text.includes("Bytes:") || text.includes("ETA")) return "#34d399";
+    if (text.includes("Checks:")) return "#fbbf24";
     return "#d4d4d4";
 }
 
 function formatLog(text) {
-    // Remove redundant [Sync]: prefix for cleaner display
+    // Enhanced formatting for sync logs
     if (text.startsWith("[Sync]:")) {
-        return text.substring(7).trim();
+        const content = text.substring(7).trim();
+        
+        // Format bandwidth info (e.g., "Transferred: 1.234 MiB / 5.678 MiB, 50%, 123.4 KiB/s, ETA 5s")
+        if (content.includes("Transferred:")) {
+            const parts = content.split(",").map(p => p.trim());
+            return (
+                <span style={{ fontFamily: "monospace" }}>
+                    {parts.map((part, i) => (
+                        <span key={i} style={{ marginRight: "12px", color: i === 2 ? "#fbbf24" : "inherit" }}>
+                            {part}
+                        </span>
+                    ))}
+                </span>
+            );
+        }
+        
+        // Format file checks (e.g., "Checks: 45 / 100, 45%")
+        if (content.includes("Checks:")) {
+            return <span style={{ fontFamily: "monospace", color: "#fbbf24" }}>{content}</span>;
+        }
+        
+        return content;
     }
     return text;
 }

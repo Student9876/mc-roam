@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Backend
-import { GetMyServers, CreateServer, JoinServer, StartServer, StopServer, AuthorizeDrive, InstallServer, DeleteServer, GetVersions } from '../../wailsjs/go/backend/App';
+import { GetMyServers, CreateServer, JoinServer, StartServer, StopServer, AuthorizeDrive, InstallServer, DeleteServer, GetVersions, LaunchPlayitExternally, ImportPlayitConfig, ForceSyncUp } from '../../wailsjs/go/backend/App';
 import { EventsOn } from '../../wailsjs/runtime/runtime';
 // Components
 import SettingsModal from '../components/SettingsModal';
@@ -29,6 +29,10 @@ export default function Dashboard() {
     const [inviteCode, setInviteCode] = useState("");
     const [rcloneConf, setRcloneConf] = useState("");
     const [isAuthorizing, setIsAuthorizing] = useState(false);
+
+    // Wizard State
+    const [createStep, setCreateStep] = useState(1);
+    const [createdServerId, setCreatedServerId] = useState(null);
 
     // Modal State
     const [needsSetup, setNeedsSetup] = useState(false);
@@ -112,9 +116,17 @@ export default function Dashboard() {
 
     const handleCreate = async () => {
         if (!newServerName || !rcloneConf || !selectedVersion) return;
-        await CreateServer(newServerName, selectedType, selectedVersion, currentUser, rcloneConf);
+        const res = await CreateServer(newServerName, selectedType, selectedVersion, currentUser, rcloneConf);
+        
+        if (res.startsWith("Error")) {
+            alert(res);
+            return;
+        }
+        
+        // Reset wizard
         setNewServerName("");
         setRcloneConf("");
+        setCreateStep(1);
         setView("dashboard");
         loadServers();
     };
@@ -235,68 +247,189 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* Create View */}
+                {/* Create View - 3 STEP WIZARD */}
                 {view === "create" && (
                     <div style={{ maxWidth: "500px" }}>
                         <h1 style={styles.pageTitle}>Create New Server</h1>
                         
-                        <div style={styles.formGroup}>
-                            <label>Server Name</label>
-                            <input style={styles.input} value={newServerName} onChange={e => setNewServerName(e.target.value)} placeholder="e.g. Survival World" />
+                        {/* STEP INDICATORS */}
+                        <div style={{display:'flex', gap:'10px', marginBottom:'20px', fontSize:'0.8rem', alignItems:'center'}}>
+                            <span style={{color: createStep>=1 ? '#fab005' : '#444', fontWeight: createStep===1 ? 'bold' : 'normal'}}>1. Details</span>
+                            <span style={{color:'#444'}}>→</span>
+                            <span style={{color: createStep>=2 ? '#fab005' : '#444', fontWeight: createStep===2 ? 'bold' : 'normal'}}>2. Cloud</span>
+                            <span style={{color:'#444'}}>→</span>
+                            <span style={{color: createStep>=3 ? '#fab005' : '#444', fontWeight: createStep===3 ? 'bold' : 'normal'}}>3. Network</span>
                         </div>
 
-                        {/* VERSION SELECTION ROW */}
-                        <div style={{ display: "flex", gap: "15px", marginBottom: "20px" }}>
-                            
-                            {/* 1. TYPE SELECTOR */}
-                            <div style={{ flex: 1 }}>
-                                <label style={{display: "block", marginBottom: "8px", fontSize: "0.9rem", color: "#aaa"}}>Server Type</label>
-                                <select 
-                                    style={styles.input} 
-                                    value={selectedType} 
-                                    onChange={(e) => handleTypeChange(e.target.value)}
-                                    disabled={availableTypes.length === 0}
-                                >
-                                    {availableTypes.length === 0 && <option>Loading...</option>}
-                                    {availableTypes.map(t => (
-                                        <option key={t} value={t}>{t}</option>
-                                    ))}
-                                </select>
-                            </div>
+                        {/* STEP 1: DETAILS */}
+                        {createStep === 1 && (
+                            <>
+                                <div style={styles.formGroup}>
+                                    <label>Server Name</label>
+                                    <input style={styles.input} value={newServerName} onChange={e => setNewServerName(e.target.value)} placeholder="e.g. Survival World" />
+                                </div>
 
-                            {/* 2. VERSION SELECTOR */}
-                            <div style={{ flex: 1 }}>
-                                <label style={{display: "block", marginBottom: "8px", fontSize: "0.9rem", color: "#aaa"}}>Game Version</label>
-                                <select 
-                                    style={styles.input} 
-                                    value={selectedVersion} 
-                                    onChange={(e) => setSelectedVersion(e.target.value)}
-                                    disabled={!selectedType}
-                                >
-                                    {allVersions
-                                        .filter(v => v.type === selectedType)
-                                        .map(v => (
-                                            <option key={v.id} value={v.version}>{v.version}</option>
-                                        ))
-                                    }
-                                </select>
-                            </div>
-                        </div>
+                                {/* VERSION SELECTION ROW */}
+                                <div style={{ display: "flex", gap: "15px", marginBottom: "20px" }}>
+                                    
+                                    {/* 1. TYPE SELECTOR */}
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{display: "block", marginBottom: "8px", fontSize: "0.9rem", color: "#aaa"}}>Server Type</label>
+                                        <select 
+                                            style={styles.input} 
+                                            value={selectedType} 
+                                            onChange={(e) => handleTypeChange(e.target.value)}
+                                            disabled={availableTypes.length === 0}
+                                        >
+                                            {availableTypes.length === 0 && <option>Loading...</option>}
+                                            {availableTypes.map(t => (
+                                                <option key={t} value={t}>{t}</option>
+                                            ))}
+                                        </select>
+                                    </div>
 
-                        <div style={styles.formGroup}>
-                            <label>Cloud Storage</label>
-                            {!rcloneConf ? (
-                                <button onClick={handleAuthorize} disabled={isAuthorizing} style={styles.googleBtn}>
-                                    {isAuthorizing ? "Waiting..." : "🔗 Link Google Drive"}
+                                    {/* 2. VERSION SELECTOR */}
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{display: "block", marginBottom: "8px", fontSize: "0.9rem", color: "#aaa"}}>Game Version</label>
+                                        <select 
+                                            style={styles.input} 
+                                            value={selectedVersion} 
+                                            onChange={(e) => setSelectedVersion(e.target.value)}
+                                            disabled={!selectedType}
+                                        >
+                                            {allVersions
+                                                .filter(v => v.type === selectedType)
+                                                .map(v => (
+                                                    <option key={v.id} value={v.version}>{v.version}</option>
+                                                ))
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <button 
+                                    onClick={() => setCreateStep(2)} 
+                                    disabled={!newServerName || !selectedVersion}
+                                    style={styles.primaryBtn}
+                                >
+                                    Next: Cloud Sync →
                                 </button>
-                            ) : (
-                                <div style={styles.connectedBadge}>✅ Google Drive Connected</div>
-                            )}
-                        </div>
+                            </>
+                        )}
 
-                        <button onClick={handleCreate} disabled={!rcloneConf || !newServerName} style={styles.primaryBtn}>
-                            Create Server
-                        </button>
+                        {/* STEP 2: CLOUD */}
+                        {createStep === 2 && (
+                            <>
+                                <div style={styles.formGroup}>
+                                    <label>Google Drive Connection</label>
+                                    <p style={{fontSize:'0.8rem', color:'#888', marginBottom:'15px'}}>
+                                        Your world data will be synced to Google Drive for backup and multiplayer sharing.
+                                    </p>
+                                    {!rcloneConf ? (
+                                        <button onClick={handleAuthorize} disabled={isAuthorizing} style={styles.googleBtn}>
+                                            {isAuthorizing ? "Waiting..." : "🔗 Link Google Drive"}
+                                        </button>
+                                    ) : (
+                                        <div style={styles.connectedBadge}>✅ Google Drive Connected</div>
+                                    )}
+                                </div>
+                                <div style={{display:'flex', gap:'10px'}}>
+                                    <button style={styles.secondaryBtn} onClick={() => setCreateStep(1)}>← Back</button>
+                                    <button 
+                                        style={styles.primaryBtn} 
+                                        disabled={!rcloneConf} 
+                                        onClick={() => setCreateStep(3)}
+                                    >
+                                        Next: Network →
+                                    </button>
+                                </div>
+                            </>
+                        )}
+
+                        {/* STEP 3: NETWORK SETUP (IMPORT METHOD) */}
+                        {createStep === 3 && (
+                            <div style={{animation: "fadeIn 0.3s"}}>
+                                <div style={styles.formGroup}>
+                                    <label style={{fontSize:'1rem', fontWeight:'600', marginBottom:'15px', display:'block'}}>Public Access Setup</label>
+                                    
+                                    <div style={{background:'#27272a', padding:'15px', borderRadius:'8px', marginBottom:'20px', fontSize:'0.9rem', lineHeight:'1.6', color:'#ddd'}}>
+                                        <div style={{marginBottom:'10px', fontWeight:'bold', color:'#fab005'}}>Instructions:</div>
+                                        <ol style={{paddingLeft:'20px', margin:0}}>
+                                            <li style={{marginBottom:'6px'}}>Click <b>"Launch Setup Terminal"</b> below.</li>
+                                            <li style={{marginBottom:'6px'}}>Copy the <span style={{color:'#4dabf7', fontFamily:'monospace'}}>https://playit.gg/claim/...</span> link, <b>Claim it</b> in your browser.</li>
+                                            <li style={{marginBottom:'6px'}}>Once it says "Agent Online", you can close the terminal.</li>
+                                            <li>Click <b>"Import Config & Finish"</b> below.</li>
+                                        </ol>
+                                    </div>
+
+                                    <button 
+                                        style={{
+                                            ...styles.secondaryBtn, 
+                                            width:'100%', 
+                                            justifyContent:'center',
+                                            border:'1px solid #fab005', 
+                                            color:'#fab005',
+                                            background:'rgba(250, 176, 5, 0.1)',
+                                            marginBottom:'20px'
+                                        }} 
+                                        onClick={async () => {
+                                            if (!newServerName) return;
+                                            let id = createdServerId;
+                                            if (!id) {
+                                                id = await CreateServer(newServerName, selectedType, selectedVersion, currentUser, rcloneConf);
+                                                if (id.startsWith("Error")) {
+                                                    alert(id);
+                                                    return;
+                                                }
+                                                setCreatedServerId(id);
+                                            }
+                                            const result = await LaunchPlayitExternally(id);
+                                            if (result.startsWith("Error")) {
+                                                alert(result);
+                                            }
+                                        }}
+                                    >
+                                        🚀 Launch Setup Terminal
+                                    </button>
+                                </div>
+
+                                <div style={{display:'flex', gap:'10px', marginTop:'20px'}}>
+                                    <button style={styles.secondaryBtn} onClick={() => setCreateStep(2)}>← Back</button>
+                                    
+                                    <button 
+                                        style={{
+                                            ...styles.primaryBtn,
+                                            opacity: !createdServerId ? 0.5 : 1,
+                                            cursor: !createdServerId ? 'not-allowed' : 'pointer'
+                                        }} 
+                                        disabled={!createdServerId}
+                                        onClick={async () => {
+                                            // 1. Import the file from AppData
+                                            const res = await ImportPlayitConfig(createdServerId);
+                                            
+                                            if (res === "Success") {
+                                                // 2. Upload to Cloud
+                                                await ForceSyncUp(createdServerId);
+                                                
+                                                // 3. Done - Reset wizard
+                                                setNewServerName("");
+                                                setRcloneConf("");
+                                                setCreateStep(1);
+                                                setCreatedServerId(null);
+                                                
+                                                alert("✅ Setup Complete! Config imported and synced.");
+                                                loadServers();
+                                                setView("dashboard");
+                                            } else {
+                                                alert("❌ " + res);
+                                            }
+                                        }}
+                                    >
+                                        Import Config & Finish
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

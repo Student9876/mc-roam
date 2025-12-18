@@ -46,6 +46,14 @@ func (a *App) InstallServer(serverID string) string {
 	localInstance := a.getInstancePath(serverID) // e.g., instances/srv_12345
 	remoteFolder := "server-" + serverID         // e.g., server-srv_12345 (Unique in Cloud!)
 
+	// 3.5. BACKUP playit.toml if it exists (so we don't lose it during cleanup)
+	playitConfigPath := filepath.Join(localInstance, "playit.toml")
+	var playitBackup []byte
+	if data, err := os.ReadFile(playitConfigPath); err == nil {
+		playitBackup = data
+		a.Log("🔒 Backing up Playit configuration...")
+	}
+
 	// 4. WIPE OLD DATA (Local)
 	a.Log(fmt.Sprintf("🧹 Cleaning up instance files in %s...", localInstance))
 	os.RemoveAll(localInstance)
@@ -68,6 +76,14 @@ func (a *App) InstallServer(serverID string) string {
 
 	propsContent := "online-mode=false\nspawn-protection=0\n"
 	os.WriteFile(filepath.Join(localInstance, "server.properties"), []byte(propsContent), 0644)
+
+	// 7.5. RESTORE playit.toml if we backed it up
+	if len(playitBackup) > 0 {
+		err := os.WriteFile(playitConfigPath, playitBackup, 0644)
+		if err == nil {
+			a.Log("✅ Restored Playit configuration!")
+		}
+	}
 
 	// 8. UPLOAD TO SPECIFIC CLOUD FOLDER
 	a.Log(fmt.Sprintf("🚀 Uploading to Cloud Folder: %s...", remoteFolder))

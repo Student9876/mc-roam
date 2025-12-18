@@ -48,6 +48,8 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 	args := []string{
 		"sync", source, dest,
 		"--progress",
+		"--stats", "1s",
+		"--stats-one-line",
 		"--transfers", "8",
 		"--create-empty-src-dirs",
 		"--config", "./rclone.conf",
@@ -58,6 +60,15 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 		"--exclude", "versions/**",
 		"--exclude", "crash-reports/**",
 	}
+
+	// --- FIX: Protect Playit Config during Download ---
+	// When syncing down from cloud, don't let Rclone delete local playit.toml
+	// if it's missing in the cloud. This prevents the config from being wiped
+	// when the server starts.
+	if direction == SyncDown {
+		args = append(args, "--exclude", "playit.toml")
+	}
+	// --------------------------------------------------
 
 	cmd := exec.Command(rcloneBin, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}

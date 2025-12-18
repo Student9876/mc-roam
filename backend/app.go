@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings" // Add this to imports at top!
+	"syscall"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -137,7 +138,7 @@ func (a *App) CreateServer(serverName string, serverType string, version string,
 	if err != nil {
 		return fmt.Sprintf("Error: Failed to create server: %v", err)
 	}
-	return "Success: Server created!"
+	return newID // Return the server ID for frontend to use
 }
 
 // GetMyServers returns a list of servers the user belongs to
@@ -321,6 +322,18 @@ func (a *App) StartServer(serverID string, username string) string {
 		return fmt.Sprintf("Error: Sync failed: %v", err)
 	}
 
+	// 5.5. Check if server.jar exists (First-time setup check)
+	serverJarPath := filepath.Join(localInstance, "server.jar")
+	if _, err := os.Stat(serverJarPath); os.IsNotExist(err) {
+		a.Log("📦 First-time setup detected. Downloading server files...")
+		installResult := a.InstallServer(serverID)
+		if !strings.HasPrefix(installResult, "Success") {
+			a.forceUnlock(serverID)
+			return "Error: Installation failed: " + installResult
+		}
+		a.Log("✅ Server installation completed successfully!")
+	}
+
 	// 6. Launch Game with specific Port
 	a.Log(fmt.Sprintf("🚀 Starting Server on Port %d...", port))
 	err = a.RunMinecraftServer(localInstance, port)
@@ -329,8 +342,14 @@ func (a *App) StartServer(serverID string, username string) string {
 		return fmt.Sprintf("Error: Failed to launch: %v", err)
 	}
 
-	// 7. Start Tunnel (Optional)
-	// a.StartTunnel(localInstance)
+	// 7. Start Playit Tunnel if config exists
+	playitConfigPath := filepath.Join(localInstance, "playit.toml")
+	if _, err := os.Stat(playitConfigPath); err == nil {
+		a.Log("🔗 Found Playit config. Starting tunnel...")
+		go a.StartPlayitTunnel(serverID)
+	} else {
+		a.Log("ℹ️ No Playit config found. Server will be accessible locally only.")
+	}
 
 	// Return the port to the UI
 	return fmt.Sprintf("Success:%d", port)
@@ -480,10 +499,46 @@ func (a *App) forceUnlock(serverID string) {
 	collection.UpdateOne(ctx, filter, update)
 }
 
-// StopTunnel stops the tunnel process
+// StopTunnel stops the playit.exe tunnel process
 func (a *App) StopTunnel() error {
-	// TODO: Implement tunnel stop logic (e.g., kill ngrok or cloudflare process)
+	a.Log("🛑 Stopping Playit tunnel...")
+
+	// Kill all playit.exe processes
+	cmd := exec.Command("taskkill", "/F", "/IM", "playit.exe")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+
+	if err := cmd.Run(); err != nil {
+		// Process might not be running, which is fine
+		a.Log("⚠️ No Playit tunnel found (may already be stopped)")
+		return nil
+	}
+
+	a.Log("✅ Playit tunnel stopped")
 	return nil
+}
+
+// ForceSyncUp is called after setup to ensure config files are saved to cloud
+func (a *App) ForceSyncUp(serverID string) string {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var server ServerGroup
+	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&server)
+	if err != nil {
+		return "Error: Server not found"
+	}
+
+	// Get paths
+	localPath := a.getInstancePath(serverID)
+	remotePath := "server-" + serverID
+
+	a.Log("☁️ Uploading Initial Configuration...")
+	err = a.RunSync(SyncUp, remotePath, localPath)
+	if err != nil {
+		return "Error syncing: " + err.Error()
+	}
+	return "Success"
 }
 
 // getInstancePath generates a unique folder for each server locally

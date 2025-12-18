@@ -16,6 +16,8 @@ export function FindProcessLockingFile(arg1:string):Promise<Array<number>>;
 
 export function ForceKillPort(arg1:number):Promise<void>;
 
+export function ForceSyncUp(arg1:string):Promise<string>;
+
 export function GetMyServers(arg1:string):Promise<Array<backend.ServerGroup>>;
 
 export function GetPlayerLists(arg1:string):Promise<backend.PlayerLists>;
@@ -25,6 +27,8 @@ export function GetServerOptions(arg1:string):Promise<backend.ServerProps>;
 export function GetVersions():Promise<Array<backend.ServerVersion>>;
 
 export function Greet(arg1:string):Promise<string>;
+
+export function ImportPlayitConfig(arg1:string):Promise<string>;
 
 export function InjectConfig(arg1:string):Promise<void>;
 
@@ -37,6 +41,8 @@ export function KillMinecraftServer():Promise<void>;
 export function KillProcessesLockingLogs(arg1:string):Promise<void>;
 
 export function KillZombie(arg1:string):Promise<void>;
+
+export function LaunchPlayitExternally(arg1:string):Promise<string>;
 
 export function Log(arg1:string):Promise<void>;
 
@@ -59,6 +65,8 @@ export function SaveWorldSetting(arg1:string,arg2:string,arg3:any):Promise<strin
 export function SeedVersions():Promise<void>;
 
 export function SendConsoleCommand(arg1:string,arg2:string):Promise<string>;
+
+export function StartPlayitTunnel(arg1:string):Promise<void>;
 
 export function StartServer(arg1:string,arg2:string):Promise<string>;
 

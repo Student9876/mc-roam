@@ -30,6 +30,10 @@ export function ForceKillPort(arg1) {
   return window['go']['backend']['App']['ForceKillPort'](arg1);
 }
 
+export function ForceSyncUp(arg1) {
+  return window['go']['backend']['App']['ForceSyncUp'](arg1);
+}
+
 export function GetMyServers(arg1) {
   return window['go']['backend']['App']['GetMyServers'](arg1);
 }
@@ -48,6 +52,10 @@ export function GetVersions() {
 
 export function Greet(arg1) {
   return window['go']['backend']['App']['Greet'](arg1);
+}
+
+export function ImportPlayitConfig(arg1) {
+  return window['go']['backend']['App']['ImportPlayitConfig'](arg1);
 }
 
 export function InjectConfig(arg1) {
@@ -72,6 +80,10 @@ export function KillProcessesLockingLogs(arg1) {
 
 export function KillZombie(arg1) {
   return window['go']['backend']['App']['KillZombie'](arg1);
+}
+
+export function LaunchPlayitExternally(arg1) {
+  return window['go']['backend']['App']['LaunchPlayitExternally'](arg1);
 }
 
 export function Log(arg1) {
@@ -116,6 +128,10 @@ export function SeedVersions() {
 
 export function SendConsoleCommand(arg1, arg2) {
   return window['go']['backend']['App']['SendConsoleCommand'](arg1, arg2);
+}
+
+export function StartPlayitTunnel(arg1) {
+  return window['go']['backend']['App']['StartPlayitTunnel'](arg1);
 }
 
 export function StartServer(arg1, arg2) {
