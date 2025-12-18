@@ -8,6 +8,9 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
 
     // Logic: Only the Creator (Owner) can delete.
     const isOwner = (owner === currentUser);
+    
+    // Logic: Check if current user is the one hosting (can stop)
+    const isHost = (server.lock.hosted_by === currentUser);
 
     // State for toggling invite code visibility
     const [showInvite, setShowInvite] = useState(false);
@@ -33,7 +36,8 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
     };
 
     // Helper to format the address (Use public address if available, else localhost)
-    const displayAddress = server.public_address || `localhost:${server.port || '...'}`;
+    const port = server.lock?.port || 25565; // Use port from lock, fallback to 25565
+    const displayAddress = server.public_address || `localhost:${port}`;
 
     const styles = {
         card: {
@@ -299,9 +303,9 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
                 <button
                     style={styles.actionBtn}
                     onClick={isRunning ? onStop : onStart}
-                    disabled={isRunning && !isOwner} // Prevent guests from stopping
+                    disabled={isRunning && !isHost} // Only the host can stop
                 >
-                    {isRunning ? (isOwner ? 'STOP SERVER' : 'SERVER ONLINE') : 'START SERVER'}
+                    {isRunning ? (isHost ? 'STOP SERVER' : 'SERVER ONLINE') : 'START SERVER'}
                 </button>
             </div>
         </div>

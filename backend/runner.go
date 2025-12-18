@@ -17,8 +17,16 @@ import (
 var activeCmd *exec.Cmd
 var stdinPipe io.WriteCloser
 
-// GetFreePort asks the OS for a random free port
+// GetFreePort tries 25565 first, then falls back to a random available port
 func GetFreePort() (int, error) {
+	// 1. Try Default Minecraft Port (25565)
+	ln, err := net.Listen("tcp", ":25565")
+	if err == nil {
+		ln.Close()
+		return 25565, nil
+	}
+
+	// 2. Fallback: Ask OS for any free port
 	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
 	if err != nil {
 		return 0, err

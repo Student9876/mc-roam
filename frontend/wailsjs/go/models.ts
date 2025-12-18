@@ -66,6 +66,7 @@ export namespace backend {
 	    // Go type: time
 	    hosted_at: any;
 	    ip_address: string;
+	    port: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new ServerLock(source);
@@ -77,6 +78,7 @@ export namespace backend {
 	        this.hosted_by = source["hosted_by"];
 	        this.hosted_at = this.convertValues(source["hosted_at"], null);
 	        this.ip_address = source["ip_address"];
+	        this.port = source["port"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

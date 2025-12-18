@@ -43,4 +43,5 @@ type ServerLock struct {
 	HostedBy  string    `bson:"hosted_by" json:"hosted_by"`
 	HostedAt  time.Time `bson:"hosted_at" json:"hosted_at"`
 	IPAddress string    `bson:"ip_address" json:"ip_address"`
+	Port      int       `bson:"port" json:"port"` // Active port (25565 or fallback)
 }

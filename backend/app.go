@@ -276,12 +276,20 @@ func (a *App) StartServer(serverID string, username string) string {
 	}
 
 	// 3. Lock the Database
+	// --- NEW: PICK DYNAMIC PORT FIRST ---
+	port, err := GetFreePort()
+	if err != nil {
+		a.Log("⚠️ Could not find free port, defaulting to 25565")
+		port = 25565
+	}
+
 	filter := bson.M{"_id": serverID, "lock.is_running": false}
 	update := bson.M{
 		"$set": bson.M{
 			"lock.is_running": true,
 			"lock.hosted_by":  username,
 			"lock.hosted_at":  time.Now(),
+			"lock.port":       port, // Save the assigned port
 		},
 	}
 	result, err := collection.UpdateOne(ctx, filter, update)
@@ -313,14 +321,8 @@ func (a *App) StartServer(serverID string, username string) string {
 		return fmt.Sprintf("Error: Sync failed: %v", err)
 	}
 
-	// --- NEW: PICK DYNAMIC PORT ---
-	port, err := GetFreePort()
-	if err != nil {
-		a.Log("⚠️ Could not find free port, defaulting to 25565")
-		port = 25565
-	}
-
 	// 6. Launch Game with specific Port
+	a.Log(fmt.Sprintf("🚀 Starting Server on Port %d...", port))
 	err = a.RunMinecraftServer(localInstance, port)
 	if err != nil {
 		a.StopServer(serverID, username)
@@ -381,6 +383,7 @@ func (a *App) StopServer(serverID string, username string) string {
 			"lock.is_running": false,
 			"lock.hosted_by":  "",
 			"lock.hosted_at":  time.Time{},
+			"lock.port":       0,
 		},
 	}
 	_, err = collection.UpdateOne(ctx, filter, update)
@@ -471,6 +474,7 @@ func (a *App) forceUnlock(serverID string) {
 			"lock.is_running": false,
 			"lock.hosted_by":  "",
 			"lock.hosted_at":  time.Time{},
+			"lock.port":       0,
 		},
 	}
 	collection.UpdateOne(ctx, filter, update)
