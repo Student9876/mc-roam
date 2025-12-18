@@ -50,7 +50,11 @@ export function RunSync(arg1:backend.SyncDirection,arg2:string,arg3:string):Prom
 
 export function SaveServerOptions(arg1:string,arg2:backend.ServerProps):Promise<string>;
 
+export function SaveWorldSetting(arg1:string,arg2:string,arg3:any):Promise<string>;
+
 export function SeedVersions():Promise<void>;
+
+export function SendConsoleCommand(arg1:string,arg2:string):Promise<string>;
 
 export function StartServer(arg1:string,arg2:string):Promise<string>;
 

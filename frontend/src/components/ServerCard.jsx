@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings }) => {
+const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings, onWorld }) => {
     const { name, invite_code, status } = server;
     const owner = server.owner || server.owner_id; // Support both field names
     const isRunning = server.lock.is_running;
@@ -209,6 +209,16 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
                         <div style={styles.ownerTag}>Owner: {owner === currentUser ? 'You' : owner}</div>
                     </div>
                     <div style={styles.iconGroup}>
+                        {/* Only Owner sees World Settings (when running) */}
+                        {isOwner && isRunning && (
+                            <button 
+                                style={styles.iconBtn} 
+                                onClick={onWorld} 
+                                title="World Settings (Real-Time)"
+                            >
+                                <span style={{ fontSize: '14px' }}>🌍</span>
+                            </button>
+                        )}
                         {/* Only Owner sees Settings */}
                         {isOwner && (
                             <button style={styles.iconBtn} onClick={onSettings} title="Settings">

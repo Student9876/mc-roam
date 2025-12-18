@@ -98,8 +98,16 @@ export function SaveServerOptions(arg1, arg2) {
   return window['go']['backend']['App']['SaveServerOptions'](arg1, arg2);
 }
 
+export function SaveWorldSetting(arg1, arg2, arg3) {
+  return window['go']['backend']['App']['SaveWorldSetting'](arg1, arg2, arg3);
+}
+
 export function SeedVersions() {
   return window['go']['backend']['App']['SeedVersions']();
+}
+
+export function SendConsoleCommand(arg1, arg2) {
+  return window['go']['backend']['App']['SendConsoleCommand'](arg1, arg2);
 }
 
 export function StartServer(arg1, arg2) {

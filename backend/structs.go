@@ -29,12 +29,13 @@ type ServerGroup struct {
 	Version string `bson:"version" json:"version"` // e.g. "1.20.4"
 	// ------------------
 
-	InviteCode   string     `bson:"invite_code" json:"invite_code"`
-	OwnerID      string     `bson:"owner_id" json:"owner_id"`
-	Owner        string     `bson:"-" json:"owner"`
-	Members      []string   `bson:"members" json:"members"`
-	RcloneConfig string     `bson:"rclone_config" json:"-"`
-	Lock         ServerLock `bson:"lock" json:"lock"`
+	InviteCode    string                 `bson:"invite_code" json:"invite_code"`
+	OwnerID       string                 `bson:"owner_id" json:"owner_id"`
+	Owner         string                 `bson:"-" json:"owner"`
+	Members       []string               `bson:"members" json:"members"`
+	RcloneConfig  string                 `bson:"rclone_config" json:"-"`
+	WorldSettings map[string]interface{} `bson:"world_settings" json:"world_settings"` // Stores { "keepInventory": true, "difficulty": "hard" }
+	Lock          ServerLock             `bson:"lock" json:"lock"`
 }
 
 type ServerLock struct {

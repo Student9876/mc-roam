@@ -214,6 +214,45 @@ func (a *App) Log(message string) {
 	}
 }
 
+// SendConsoleCommand injects a command into the running Minecraft server
+func (a *App) SendConsoleCommand(serverID string, command string) string {
+	// Security: Only allow if this is the currently running server
+	// (In a multi-server app, you'd check a map of activeCmds.
+	// For now, we use the global activeCmd/stdinPipe you set up earlier)
+
+	if activeCmd == nil || stdinPipe == nil {
+		return "Error: Server is not online."
+	}
+
+	// Write command to stdin (Minecraft console)
+	// Note: Minecraft commands need a newline "\n" at the end
+	_, err := stdinPipe.Write([]byte(command + "\n"))
+	if err != nil {
+		return "Error: Failed to send command."
+	}
+
+	a.Log("💻 Command Sent: " + command)
+	return "Success"
+}
+
+// SaveWorldSetting saves a world setting to the database (So the UI remembers your toggles)
+func (a *App) SaveWorldSetting(serverID string, key string, value interface{}) string {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx := context.TODO()
+
+	// Update specific field in the map: world_settings.keepInventory
+	updateField := fmt.Sprintf("world_settings.%s", key)
+
+	_, err := collection.UpdateOne(ctx, bson.M{"_id": serverID}, bson.M{
+		"$set": bson.M{updateField: value},
+	})
+
+	if err != nil {
+		return "Error saving setting"
+	}
+	return "Success"
+}
+
 // StartServer attempts to acquire the lock for a server
 func (a *App) StartServer(serverID string, username string) string {
 	collection := DB.Client.Database("mc_roam").Collection("servers")

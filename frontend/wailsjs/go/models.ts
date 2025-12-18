@@ -46,6 +46,7 @@ export namespace backend {
 	    owner_id: string;
 	    owner: string;
 	    members: string[];
+	    world_settings: Record<string, any>;
 	    lock: ServerLock;
 	
 	    static createFrom(source: any = {}) {
@@ -62,6 +63,7 @@ export namespace backend {
 	        this.owner_id = source["owner_id"];
 	        this.owner = source["owner"];
 	        this.members = source["members"];
+	        this.world_settings = source["world_settings"];
 	        this.lock = this.convertValues(source["lock"], ServerLock);
 	    }
 	
