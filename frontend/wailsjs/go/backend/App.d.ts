@@ -18,6 +18,8 @@ export function ForceKillPort(arg1:number):Promise<void>;
 
 export function GetMyServers(arg1:string):Promise<Array<backend.ServerGroup>>;
 
+export function GetPlayerLists(arg1:string):Promise<backend.PlayerLists>;
+
 export function GetServerOptions(arg1:string):Promise<backend.ServerProps>;
 
 export function GetVersions():Promise<Array<backend.ServerVersion>>;
@@ -39,6 +41,8 @@ export function KillZombie(arg1:string):Promise<void>;
 export function Log(arg1:string):Promise<void>;
 
 export function Login(arg1:string,arg2:string):Promise<string>;
+
+export function ManagePlayer(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
 
 export function PurgeRemote(arg1:string):Promise<void>;
 

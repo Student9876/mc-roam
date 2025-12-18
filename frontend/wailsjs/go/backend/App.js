@@ -34,6 +34,10 @@ export function GetMyServers(arg1) {
   return window['go']['backend']['App']['GetMyServers'](arg1);
 }
 
+export function GetPlayerLists(arg1) {
+  return window['go']['backend']['App']['GetPlayerLists'](arg1);
+}
+
 export function GetServerOptions(arg1) {
   return window['go']['backend']['App']['GetServerOptions'](arg1);
 }
@@ -76,6 +80,10 @@ export function Log(arg1) {
 
 export function Login(arg1, arg2) {
   return window['go']['backend']['App']['Login'](arg1, arg2);
+}
+
+export function ManagePlayer(arg1, arg2, arg3, arg4) {
+  return window['go']['backend']['App']['ManagePlayer'](arg1, arg2, arg3, arg4);
 }
 
 export function PurgeRemote(arg1) {

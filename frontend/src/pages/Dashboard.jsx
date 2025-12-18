@@ -6,6 +6,7 @@ import { EventsOn } from '../../wailsjs/runtime/runtime';
 // Components
 import SettingsModal from '../components/SettingsModal';
 import WorldModal from '../components/WorldModal';
+import PlayerModal from '../components/PlayerModal';
 import Terminal from '../components/Terminal';
 import ServerCard from '../components/ServerCard'; // <--- IMPORT THE NEW COMPONENT
 
@@ -35,6 +36,7 @@ export default function Dashboard() {
     const [isInstalling, setIsInstalling] = useState(false);
     const [settingsServerId, setSettingsServerId] = useState(null);
     const [worldSettingsId, setWorldSettingsId] = useState(null);
+    const [playerId, setPlayerId] = useState(null);
 
     const currentUser = sessionStorage.getItem("mc_username") || "Unknown";
     const navigate = useNavigate();
@@ -225,6 +227,7 @@ export default function Dashboard() {
                                     onStop={() => handleStop(server.id)}
                                     onSettings={() => setSettingsServerId(server.id)}
                                     onWorld={() => setWorldSettingsId(server.id)}
+                                    onPlayers={() => setPlayerId(server.id)}
                                     onDelete={() => handleDelete(server.id)}
                                 />
                             ))}
@@ -319,6 +322,12 @@ export default function Dashboard() {
                 <WorldModal 
                     server={servers.find(s => s.id === worldSettingsId)} 
                     onClose={() => setWorldSettingsId(null)} 
+                />
+            )}
+            {playerId && (
+                <PlayerModal 
+                    server={servers.find(s => s.id === playerId)} 
+                    onClose={() => setPlayerId(null)} 
                 />
             )}
 
