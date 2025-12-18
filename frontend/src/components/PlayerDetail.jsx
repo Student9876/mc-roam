@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function PlayerDetail({ player, knownPlayers, onBack, onAction }) {
     const [tpCoords, setTpCoords] = useState({ x: 0, y: 100, z: 0 });
@@ -6,6 +6,36 @@ export default function PlayerDetail({ player, knownPlayers, onBack, onAction })
 
     // Filter out the current player from the list
     const otherPlayers = knownPlayers.filter(p => p.name !== player.name);
+
+    // Add custom scrollbar styles
+    useEffect(() => {
+        const styleId = 'player-detail-scrollbar';
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = `
+                .player-detail-scroll::-webkit-scrollbar {
+                    width: 8px;
+                }
+                .player-detail-scroll::-webkit-scrollbar-track {
+                    background: #18181b;
+                    border-radius: 4px;
+                }
+                .player-detail-scroll::-webkit-scrollbar-thumb {
+                    background: #3f3f46;
+                    border-radius: 4px;
+                }
+                .player-detail-scroll::-webkit-scrollbar-thumb:hover {
+                    background: #52525b;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        return () => {
+            const styleEl = document.getElementById(styleId);
+            if (styleEl) styleEl.remove();
+        };
+    }, []);
 
     return (
         <div style={styles.container}>
@@ -25,14 +55,14 @@ export default function PlayerDetail({ player, knownPlayers, onBack, onAction })
                 </div>
             </div>
 
-            <div style={styles.grid}>
+            <div style={styles.grid} className="player-detail-scroll">
                 
                 {/* LEFT COL: STATUS */}
                 <div style={styles.col}>
                     
                     {/* GAMEMODE */}
                     <div style={styles.panel}>
-                        <div style={styles.panelTitle}>🎮 Gamemode</div>
+                        <div style={styles.panelTitle}>Gamemode</div>
                         <div style={styles.gmGrid}>
                             <ModeBtn icon="⚔️" label="Survival" onClick={() => onAction("gamemode_survival", player.name)} />
                             <ModeBtn icon="✨" label="Creative" onClick={() => onAction("gamemode_creative", player.name)} />
@@ -43,7 +73,7 @@ export default function PlayerDetail({ player, knownPlayers, onBack, onAction })
 
                     {/* STATUS ACTIONS */}
                     <div style={styles.panel}>
-                        <div style={styles.panelTitle}>❤️ Vitals</div>
+                        <div style={styles.panelTitle}>Vitals</div>
                         <div style={styles.actionGrid}>
                             <ActionButton label="💀 Kill" color="#ef4444" onClick={() => onAction("kill", player.name)} />
                             <ActionButton label="💖 Heal" color="#10b981" onClick={() => onAction("heal", player.name)} />
@@ -54,7 +84,7 @@ export default function PlayerDetail({ player, knownPlayers, onBack, onAction })
 
                      {/* INVENTORY PLACEHOLDER */}
                      <div style={styles.panel}>
-                        <div style={styles.panelTitle}>🎒 Inventory</div>
+                        <div style={styles.panelTitle}>Inventory</div>
                         <div style={styles.inventoryGrid}>
                             {Array.from({length: 27}).map((_, i) => <div key={i} style={styles.slot}>?</div>)}
                         </div>
@@ -69,7 +99,7 @@ export default function PlayerDetail({ player, knownPlayers, onBack, onAction })
                     
                     {/* TELEPORTATION PANEL */}
                     <div style={styles.panel}>
-                        <div style={styles.panelTitle}>🌐 Teleport</div>
+                        <div style={styles.panelTitle}>Teleport</div>
                         
                         {/* 1. To Spawn */}
                         <div style={{marginBottom:'15px'}}>
@@ -140,7 +170,7 @@ function ActionButton({ label, color, onClick }) {
             onClick={onClick}
             style={{
                 background: `${color}20`, color: color, border: `1px solid ${color}40`,
-                padding: '8px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer'
+                padding: '8px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'left'
             }}
         >
             {label}
@@ -155,17 +185,17 @@ const styles = {
     grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', padding: '20px', overflowY: 'auto' },
     col: { display: 'flex', flexDirection: 'column', gap: '20px' },
     panel: { background: '#27272a', borderRadius: '12px', padding: '15px', border: '1px solid #3f3f46' },
-    panelTitle: { color: '#fff', fontWeight: 'bold', marginBottom: '10px', fontSize: '0.9rem', display:'flex', alignItems:'center', gap:'5px' },
+    panelTitle: { color: '#fff', fontWeight: 'bold', marginBottom: '10px', fontSize: '0.9rem', display:'flex', alignItems:'center', gap:'5px', textAlign: 'left' },
     
     gmGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' },
-    modeBtn: { background:'#333', border:'1px solid #444', color:'#ccc', borderRadius:'8px', padding:'10px', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center' },
+    modeBtn: { background:'#333', border:'1px solid #444', color:'#ccc', borderRadius:'8px', padding:'10px', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'flex-start', textAlign: 'left' },
     
     actionGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' },
     
     inventoryGrid: { display: 'grid', gridTemplateColumns: 'repeat(9, 1fr)', gap: '4px' },
     slot: { aspectRatio: '1/1', background: '#18181b', border: '1px solid #3f3f46', borderRadius: '4px', display:'flex', alignItems:'center', justifyContent:'center', color:'#333', fontSize:'0.7rem' },
     
-    tpBtn: { width:'100%', padding:'10px', background:'#3b82f620', color:'#3b82f6', border:'1px solid #3b82f640', borderRadius:'6px', cursor:'pointer', fontWeight:'bold' },
+    tpBtn: { width:'100%', padding:'10px', background:'#3b82f620', color:'#3b82f6', border:'1px solid #3b82f640', borderRadius:'6px', cursor:'pointer', fontWeight:'bold', textAlign: 'left' },
     coordInput: { width: '100%', padding: '6px', borderRadius: '4px', border: 'none', background: '#333', color: 'white', textAlign: 'center' },
     miniBtn: { background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', padding: '0 10px', cursor: 'pointer', fontWeight: 'bold' },
     select: { flex: 1, padding: '6px', borderRadius: '4px', border: 'none', background: '#333', color: 'white' }

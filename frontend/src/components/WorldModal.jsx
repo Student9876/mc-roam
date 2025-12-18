@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SendConsoleCommand, SaveWorldSetting } from '../../wailsjs/go/backend/App';
 
 // --- CONFIGURATION: MAPS UI TO COMMANDS ---
@@ -47,6 +47,36 @@ const RULE_CATEGORIES = {
 };
 
 export default function WorldModal({ server, onClose }) {
+    // Add custom scrollbar styles
+    useEffect(() => {
+        const styleId = 'world-modal-scrollbar';
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = `
+                .world-modal-scroll::-webkit-scrollbar {
+                    width: 8px;
+                }
+                .world-modal-scroll::-webkit-scrollbar-track {
+                    background: #18181b;
+                    border-radius: 4px;
+                }
+                .world-modal-scroll::-webkit-scrollbar-thumb {
+                    background: #3f3f46;
+                    border-radius: 4px;
+                }
+                .world-modal-scroll::-webkit-scrollbar-thumb:hover {
+                    background: #52525b;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        return () => {
+            const styleEl = document.getElementById(styleId);
+            if (styleEl) styleEl.remove();
+        };
+    }, []);
+
     // 1. Load Initial State
     // We merge the server's saved settings with defaults to ensure UI isn't empty
     const savedSettings = server.world_settings || {};
@@ -120,7 +150,6 @@ export default function WorldModal({ server, onClose }) {
                 {/* HEADER */}
                 <div style={styles.header}>
                     <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                        <span style={{fontSize:'1.5rem'}}>🌍</span>
                         <div>
                             <h2 style={{ margin: 0, color: '#fff' }}>World Settings</h2>
                             <div style={{fontSize:'0.8rem', color:'#aaa'}}>Real-time control center</div>
@@ -143,7 +172,7 @@ export default function WorldModal({ server, onClose }) {
                 </div>
 
                 {/* CONTENT AREA */}
-                <div style={styles.content}>
+                <div style={styles.content} className="world-modal-scroll">
                     <div style={styles.grid}>
                         {RULE_CATEGORIES[activeTab].map((rule) => (
                             <div key={rule.id} style={styles.card}>
@@ -213,7 +242,7 @@ const styles = {
     tab: { flex: 1, padding: "16px", background: "transparent", border: "none", color: "#71717a", cursor: "pointer", fontWeight: "600", borderBottom: "2px solid transparent", transition: "all 0.2s" },
     tabActive: { flex: 1, padding: "16px", background: "#27272a", border: "none", color: "#fab005", cursor: "pointer", fontWeight: "bold", borderBottom: "2px solid #fab005" },
 
-    content: { padding: "30px", overflowY: "auto", flex: 1, background: "#18181b" },
+    content: { padding: "30px", overflowY: "auto", flex: 1, background: "#18181b", scrollbarWidth: "thin", scrollbarColor: "#3f3f46 #18181b" },
     grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" },
     
     card: { background: "#27272a", padding: "16px", borderRadius: "8px", display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid #3f3f46" },

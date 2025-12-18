@@ -65,8 +65,7 @@ export default function PlayerModal({ server, onClose }) {
                     <>
                         {/* HEADER */}
                         <div style={styles.header}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <span style={{ fontSize: '1.5rem' }}>👤</span>
+                            <div style={{ display: 'flex', alignItems: 'left', gap: '10px' }}>
                                 <div>
                                     <h2 style={{ margin: 0, color: '#fff' }}>Player Manager</h2>
                                     <div style={styles.subTitle}>Manage Whitelist, OPs, and Bans</div>
