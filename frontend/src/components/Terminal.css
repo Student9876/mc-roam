@@ -143,13 +143,12 @@
     font-size: 0.8rem;
     display: flex;
     align-items: center;
-    background: #1a1a1a;
-    border-left: 1px solid #333;
+    background: transparent;
     border: none;
-    border-left: 1px solid #333;
     outline: none;
     box-shadow: none;
     user-select: none;
+    height: 30px;
 }
 
 .empty-msg {

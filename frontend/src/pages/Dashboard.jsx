@@ -446,9 +446,9 @@ export default function Dashboard() {
                                 <div style={styles.formGroup}>
                                     <label style={{fontSize:'1rem', fontWeight:'600', marginBottom:'15px', display:'block'}}>Public Access Setup</label>
                                     
-                                    <div style={{background:'#27272a', padding:'15px', borderRadius:'8px', marginBottom:'20px', fontSize:'0.9rem', lineHeight:'1.6', color:'#ddd'}}>
+                                    <div style={{background:'#27272a', padding:'15px', borderRadius:'8px', marginBottom:'20px', fontSize:'0.9rem', lineHeight:'1.6', color:'#ddd', textAlign:'left'}}>
                                         <div style={{marginBottom:'10px', fontWeight:'bold', color:'#fab005'}}>Instructions:</div>
-                                        <ol style={{paddingLeft:'20px', margin:0}}>
+                                        <ol style={{paddingLeft:'20px', margin:0, textAlign:'left'}}>
                                             <li style={{marginBottom:'6px'}}>Click <b>"Launch Setup Terminal"</b> below.</li>
                                             <li style={{marginBottom:'6px'}}>Copy the <span style={{color:'#4dabf7', fontFamily:'monospace'}}>https://playit.gg/claim/...</span> link, <b>Claim it</b> in your browser.</li>
                                             <li style={{marginBottom:'6px'}}>Once it says "Agent Online", you can close the terminal.</li>

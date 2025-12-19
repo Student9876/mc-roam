@@ -69,22 +69,15 @@ export default function Terminal({ selectedServer }) {
     // --- 4. Smart Filtering ---
     const filteredLogs = useMemo(() => {
         if (activeTab === 'terminal') {
-            return logs.filter(log => {
-                const t = log.text;
-                // SHOW: Minecraft Logs, Playit Logs, User Commands, Errors
-                return t.includes("[MC]:") ||
-                    t.includes("[Playit]:") ||
-                    t.startsWith(">") ||
-                    t.includes("Error") ||
-                    t.includes("Started on Port");
-            });
+            // Console: Show ONLY Minecraft logs (starts with [MC]:)
+            return logs.filter(log => log.text.includes("[MC]:"));
         }
         // System Logs: Show EVERYTHING
         return logs;
     }, [logs, activeTab]);
 
     return (
-        <div className="terminal-wrapper" style={{ height: isMinimized ? "35px" : "280px", display: 'flex', flexDirection: 'column' }}>
+        <div className="terminal-wrapper" style={{ height: isMinimized ? "35px" : "200px", display: 'flex', flexDirection: 'column' }}>
 
             {/* HEADER */}
             <div className="terminal-header" style={{ display: 'flex', justifyContent: 'space-between', padding: 0 }}>
@@ -157,7 +150,7 @@ const LogLine = ({ log }) => {
     return (
         <div style={{
             fontFamily: 'Consolas, monospace', fontSize: '0.85rem', padding: '1px 8px', color: color,
-            lineHeight: '1.4', wordBreak: 'break-all'
+            lineHeight: '1.4', wordBreak: 'break-word', textAlign: 'left'
         }}>
             <span style={{ color: '#555', marginRight: '8px', fontSize: '0.75rem', userSelect: 'none' }}>
                 {log.time}
