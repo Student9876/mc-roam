@@ -260,21 +260,43 @@ func (a *App) StartServer(serverID string, username string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// 1. Fetch Config First
+	// 1. Fetch Server from DB
 	var serverDoc ServerGroup
 	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&serverDoc)
 	if err != nil {
 		return "Error: Server not found."
 	}
 
-	// 2. Inject Config
-	if serverDoc.RcloneConfig == "" {
-		return "Error: This server has no Cloud Config set up!"
+	// --- INJECT SHARED CLOUD CREDENTIALS ---
+	// If the current user doesn't have an rclone.conf,
+	// create it using the credentials stored in the Server Object.
+	// This allows Friends to access the Host's Drive without logging in.
+
+	// Check if local config exists
+	if _, err := os.Stat("rclone.conf"); os.IsNotExist(err) {
+		if serverDoc.RcloneConfig != "" {
+			a.Log("🔑 Applying Shared Cloud Credentials...")
+			// Write the stored config to a local file
+			err := os.WriteFile("rclone.conf", []byte(serverDoc.RcloneConfig), 0644)
+			if err != nil {
+				return "Error writing shared credentials: " + err.Error()
+			}
+			a.Log("✅ Cloud credentials configured successfully!")
+		} else {
+			return "Error: No cloud credentials found for this server."
+		}
+	} else {
+		// Config exists, but ensure it's up to date with server's config
+		if serverDoc.RcloneConfig != "" {
+			err = a.InjectConfig(serverDoc.RcloneConfig)
+			if err != nil {
+				return "Error: Failed to inject cloud keys."
+			}
+		} else {
+			return "Error: This server has no Cloud Config set up!"
+		}
 	}
-	err = a.InjectConfig(serverDoc.RcloneConfig)
-	if err != nil {
-		return "Error: Failed to inject cloud keys."
-	}
+	// ---------------------------------------------
 
 	// 3. Lock the Database
 	// --- NEW: PICK DYNAMIC PORT FIRST ---
