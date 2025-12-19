@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +25,42 @@ type App struct {
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{}
+}
+
+// getAppDir returns the directory where the .exe is running
+func getAppDir() string {
+	ex, err := os.Executable()
+	if err != nil {
+		// Fallback to working directory if executable path fails
+		dir, _ := os.Getwd()
+		return dir
+	}
+	return filepath.Dir(ex)
+}
+
+// ensureDataDir ensures the data folder exists and returns its path
+func ensureDataDir() string {
+	appDir := getAppDir()
+	dataDir := filepath.Join(appDir, "mc_roam_data") // All servers go here
+
+	// Create the folder if it doesn't exist
+	if _, err := os.Stat(dataDir); os.IsNotExist(err) {
+		log.Println("📁 Creating data directory at:", dataDir)
+		os.MkdirAll(dataDir, 0755)
+	}
+	return dataDir
+}
+
+// getPlayitBin returns the absolute path to playit.exe
+func getPlayitBin() string {
+	appDir := getAppDir()
+	return filepath.Join(appDir, "playit.exe")
+}
+
+// getRcloneConfig returns the absolute path to rclone.conf
+func getRcloneConfig() string {
+	appDir := getAppDir()
+	return filepath.Join(appDir, "rclone.conf")
 }
 
 // Startup is called when the app starts.
@@ -438,7 +475,7 @@ func (a *App) StopServer(serverID string, username string) string {
 // AuthorizeDrive runs the interactive Rclone login flow
 // It returns the full config string (not just the token)
 func (a *App) AuthorizeDrive(clientID string, clientSecret string) string {
-	rcloneBin := "./rclone.exe"
+	rcloneBin := getToolPath("rclone.exe")
 
 	// 1. Use default keys if user didn't provide custom ones
 	// (You can hardcode your keys here so friends don't need to type them!)
@@ -496,7 +533,7 @@ token = %s
 func (a *App) CheckCloudExists(folderName string) bool {
 	// Construct the path: mc-remote:server-123
 	fullPath := "mc-remote:" + folderName
-	cmd := exec.Command("./rclone.exe", "lsd", fullPath, "--config", "./rclone.conf")
+	cmd := exec.Command(getToolPath("rclone.exe"), "lsd", fullPath, "--config", getRcloneConfig())
 	if err := cmd.Run(); err != nil {
 		return false
 	}
@@ -563,9 +600,10 @@ func (a *App) ForceSyncUp(serverID string) string {
 	return "Success"
 }
 
-// getInstancePath generates a unique folder for each server locally
+// getInstancePath generates a unique folder for each server locally using absolute path
 func (a *App) getInstancePath(serverID string) string {
-	return filepath.Join("instances", serverID)
+	dataDir := ensureDataDir()
+	return filepath.Join(dataDir, "instances", serverID)
 }
 
 // DeleteServer removes the server from DB, Local Disk, and Cloud

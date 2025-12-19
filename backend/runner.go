@@ -176,19 +176,34 @@ func (a *App) RunMinecraftServer(serverDir string, port int) error {
 	}
 	stdinPipe = stdin
 
-	// 9. LOG STREAMING MAGIC
+	// 9. LOG STREAMING MAGIC - Capture BOTH stdout and stderr
 	stdout, _ := cmd.StdoutPipe()
-	cmd.Stderr = cmd.Stdout // Merge errors into stdout
+	stderr, _ := cmd.StderrPipe()
 
 	if err := cmd.Start(); err != nil {
 		return err
 	}
 
-	// Read logs in background and send to Frontend
+	// Stream stdout in background
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			text := scanner.Text()
+			// Print to backend console for debugging
+			fmt.Println("[MC]", text)
+			// Send to frontend
+			a.Log("[MC]: " + text)
+		}
+	}()
+
+	// Stream stderr in background (for errors/warnings)
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			text := scanner.Text()
+			// Print to backend console
+			fmt.Println("[MC-ERR]", text)
+			// Send to frontend with error prefix
 			a.Log("[MC]: " + text)
 		}
 	}()

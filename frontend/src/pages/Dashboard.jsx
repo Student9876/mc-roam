@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Backend
-import { GetMyServers, CreateServer, JoinServer, StartServer, StopServer, AuthorizeDrive, InstallServer, DeleteServer, GetVersions, LaunchPlayitExternally, ImportPlayitConfig, ForceSyncUp } from '../../wailsjs/go/backend/App';
+import { GetMyServers, CreateServer, JoinServer, StartServer, StopServer, AuthorizeDrive, InstallServer, DeleteServer, GetVersions, LaunchPlayitExternally, ImportPlayitConfig, ForceSyncUp, CheckDependencies, InstallDependencies } from '../../wailsjs/go/backend/App';
 import { EventsOn } from '../../wailsjs/runtime/runtime';
 // Components
 import SettingsModal from '../components/SettingsModal';
@@ -11,6 +11,11 @@ import Terminal from '../components/Terminal';
 import ServerCard from '../components/ServerCard'; // <--- IMPORT THE NEW COMPONENT
 
 export default function Dashboard() {
+    // Dependency Check State
+    const [isSystemReady, setIsSystemReady] = useState(false);
+    const [systemStatus, setSystemStatus] = useState("Checking system integrity...");
+    const [systemLogs, setSystemLogs] = useState([]);
+
     const [servers, setServers] = useState([]);
 
     // Version selection state
@@ -45,9 +50,37 @@ export default function Dashboard() {
     const currentUser = sessionStorage.getItem("mc_username") || "Unknown";
     const navigate = useNavigate();
 
-    useEffect(() => { 
-        loadServers();
+    // Listen to system logs from backend
+    useEffect(() => {
+        const unsubscribe = EventsOn("server-log", (msg) => {
+            setSystemLogs(prev => [...prev, msg]);
+        });
+        return () => unsubscribe && unsubscribe();
     }, []);
+
+    // Check dependencies on mount
+    useEffect(() => {
+        verifySystem();
+    }, []);
+
+    const verifySystem = async () => {
+        try {
+            setSystemStatus("Checking system integrity...");
+            const ready = await CheckDependencies();
+            
+            if (ready) {
+                setIsSystemReady(true);
+                loadServers();
+            } else {
+                setSystemStatus("Missing critical tools. Downloading...");
+                await InstallDependencies();
+                setIsSystemReady(true);
+                loadServers();
+            }
+        } catch (error) {
+            setSystemStatus(`Error: ${error}. Check internet connection.`);
+        }
+    };
 
     // Use a separate effect for versions to isolate errors
     useEffect(() => {
@@ -187,6 +220,67 @@ export default function Dashboard() {
             alert(res);
         }
     };
+
+    // Loading Screen - Show while checking dependencies
+    if (!isSystemReady) {
+        return (
+            <div style={{
+                height: "100vh",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)",
+                color: "#e0e0e0",
+                fontFamily: "'Inter', sans-serif"
+            }}>
+                <div style={{
+                    animation: "spin 2s linear infinite",
+                    fontSize: "4rem",
+                    marginBottom: "2rem"
+                }}>⚙️</div>
+                <h2 style={{
+                    fontSize: "1.8rem",
+                    fontWeight: "bold",
+                    marginBottom: "0.5rem",
+                    color: "#fab005"
+                }}>Setting up Local Cloud</h2>
+                <p style={{
+                    fontSize: "1rem",
+                    color: "#888",
+                    marginBottom: "2rem"
+                }}>{systemStatus}</p>
+                
+                {/* Log Output Window */}
+                {systemLogs.length > 0 && (
+                    <div style={{
+                        width: "500px",
+                        maxHeight: "300px",
+                        background: "#0a0a0a",
+                        border: "1px solid #333",
+                        borderRadius: "8px",
+                        padding: "1rem",
+                        overflowY: "auto",
+                        fontFamily: "monospace",
+                        fontSize: "0.85rem"
+                    }}>
+                        {systemLogs.map((log, idx) => (
+                            <div key={idx} style={{ marginBottom: "4px", color: "#69db7c" }}>
+                                {log}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <style>{`
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                `}</style>
+            </div>
+        );
+    }
 
     return (
         <div style={styles.container}>
@@ -447,7 +541,7 @@ export default function Dashboard() {
             </div>
 
             {/* FLOATING TERMINAL */}
-            <Terminal />
+            <Terminal selectedServer={servers.find(s => s.lock?.is_running) || null} />
 
             {/* MODALS */}
             {settingsServerId && <SettingsModal serverId={settingsServerId} onClose={() => setSettingsServerId(null)} />}

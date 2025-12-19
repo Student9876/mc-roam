@@ -13,7 +13,7 @@
 }
 
 .terminal-header {
-    background-color: #252526; /* VS Code Header Color */
+    background-color: #000000; /* VS Code Header Color */
     height: 30px;
     padding: 0 15px;
     display: flex;
@@ -114,4 +114,47 @@
 @keyframes slideUp {
     from { transform: translateY(100%); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
+}
+
+/* Terminal Input Bar */
+.terminal-input-bar {
+    border-top: 1px solid #333;
+    padding: 8px;
+    background: #1e1e1e;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.terminal-input-bar input {
+    background: transparent;
+    border: none;
+    color: #fff;
+    flex: 1;
+    font-family: 'Consolas', monospace;
+    outline: none;
+    font-size: 0.9rem;
+}
+
+.minimize-btn {
+    padding: 0 15px;
+    cursor: pointer;
+    color: #ccc;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    background: #1a1a1a;
+    border-left: 1px solid #333;
+    border: none;
+    border-left: 1px solid #333;
+    outline: none;
+    box-shadow: none;
+    user-select: none;
+}
+
+.empty-msg {
+    color: #555; 
+    font-style: italic; 
+    font-family: monospace; 
+    padding: 10px;
 }

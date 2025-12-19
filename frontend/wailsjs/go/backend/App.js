@@ -10,6 +10,10 @@ export function CheckCloudExists(arg1) {
   return window['go']['backend']['App']['CheckCloudExists'](arg1);
 }
 
+export function CheckDependencies() {
+  return window['go']['backend']['App']['CheckDependencies']();
+}
+
 export function CleanLocks(arg1) {
   return window['go']['backend']['App']['CleanLocks'](arg1);
 }
@@ -60,6 +64,10 @@ export function ImportPlayitConfig(arg1) {
 
 export function InjectConfig(arg1) {
   return window['go']['backend']['App']['InjectConfig'](arg1);
+}
+
+export function InstallDependencies() {
+  return window['go']['backend']['App']['InstallDependencies']();
 }
 
 export function InstallServer(arg1) {

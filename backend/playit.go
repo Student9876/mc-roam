@@ -1,17 +1,24 @@
 package backend
 
 import (
+	"bufio"
+	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // ensurePlayitBinary checks if playit.exe exists, if not, downloads it
 func (a *App) ensurePlayitBinary() error {
-	binPath := "./playit.exe"
+	binPath := getPlayitBin()
 	if _, err := os.Stat(binPath); err == nil {
 		return nil
 	}
@@ -41,7 +48,7 @@ func (a *App) LaunchPlayitExternally(serverID string) string {
 	}
 
 	// We just launch it. It will save config to %LocalAppData%\playit_gg\playit.toml
-	absPath, _ := filepath.Abs("./playit.exe")
+	absPath, _ := filepath.Abs(getPlayitBin())
 	cmd := exec.Command("cmd", "/c", "start", "Playit Setup", "cmd", "/k", absPath)
 
 	if err := cmd.Start(); err != nil {
@@ -89,16 +96,92 @@ func (a *App) StartPlayitTunnel(serverID string) {
 	}
 
 	instanceDir := a.getInstancePath(serverID)
-	absPath, _ := filepath.Abs("./playit.exe")
+	absPath, _ := filepath.Abs(getPlayitBin())
 
 	cmd := exec.Command(absPath)
 	cmd.Dir = instanceDir
 	// Playit will now find the 'playit.toml' we copied into this folder
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// Capture output pipe instead of dumping to os.Stdout
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		a.Log("⚠️ Failed to start Playit tunnel.")
+		return
+	}
+	// Merge Stderr into Stdout to catch errors too
+	cmd.Stderr = cmd.Stdout
 
 	if err := cmd.Start(); err != nil {
 		a.Log("⚠️ Failed to start Playit tunnel.")
+		return
+	}
+
+	a.Log("🔗 Starting Playit tunnel...")
+
+	// Read logs and Emit to Frontend
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			line := scanner.Text()
+			// Prefix with [Playit] so we can filter it in the Console tab
+			a.Log("[Playit]: " + line)
+
+			// Look for tunnel URL pattern and save it
+			if strings.Contains(line, "playit.gg") {
+				// Try to extract the URL/address
+				if idx := strings.Index(line, "http"); idx != -1 {
+					url := extractURL(line[idx:])
+					if url != "" {
+						a.saveTunnelURL(serverID, url)
+						a.Log(fmt.Sprintf("🌐 Public Address: %s", url))
+					}
+				} else if strings.Contains(line, "playit.gg") {
+					if addr := extractPlayitAddress(line); addr != "" {
+						a.saveTunnelURL(serverID, addr)
+						a.Log(fmt.Sprintf("🌐 Public Address: %s", addr))
+					}
+				}
+			}
+		}
+	}()
+}
+
+// Helper to extract URL from line
+func extractURL(text string) string {
+	parts := strings.Fields(text)
+	for _, part := range parts {
+		if strings.HasPrefix(part, "http") {
+			return strings.TrimRight(part, ".,;:)")
+		}
+	}
+	return ""
+}
+
+// Helper to extract playit.gg address
+func extractPlayitAddress(text string) string {
+	parts := strings.Fields(text)
+	for _, part := range parts {
+		if strings.Contains(part, "playit.gg") {
+			return strings.TrimRight(part, ".,;:)")
+		}
+	}
+	return ""
+}
+
+// Save tunnel URL to database
+func (a *App) saveTunnelURL(serverID string, tunnelURL string) {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	update := bson.M{
+		"$set": bson.M{
+			"lock.tunnel_url": tunnelURL,
+		},
+	}
+
+	_, err := collection.UpdateOne(ctx, bson.M{"_id": serverID}, update)
+	if err != nil {
+		a.Log("⚠️ Failed to save tunnel URL to database")
 	}
 }

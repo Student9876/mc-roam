@@ -17,7 +17,7 @@ const (
 
 // RunSync executes the Rclone command and streams output to UI
 func (a *App) RunSync(direction SyncDirection, remotePath string, localPath string) error {
-	rcloneBin := "./rclone.exe"
+	rcloneBin := getToolPath("rclone.exe")
 	var source, dest string
 	remoteName := "mc-remote:" + remotePath
 
@@ -52,7 +52,7 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 		"--stats-one-line",
 		"--transfers", "8",
 		"--create-empty-src-dirs",
-		"--config", "./rclone.conf",
+		"--config", getRcloneConfig(),
 		"--exclude", "session.lock",
 		"--exclude", "logs/**",
 		"--exclude", "cache/**",
@@ -60,15 +60,6 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 		"--exclude", "versions/**",
 		"--exclude", "crash-reports/**",
 	}
-
-	// --- FIX: Protect Playit Config during Download ---
-	// When syncing down from cloud, don't let Rclone delete local playit.toml
-	// if it's missing in the cloud. This prevents the config from being wiped
-	// when the server starts.
-	if direction == SyncDown {
-		args = append(args, "--exclude", "playit.toml")
-	}
-	// --------------------------------------------------
 
 	cmd := exec.Command(rcloneBin, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
@@ -147,10 +138,10 @@ func (a *App) PurgeRemote(remotePath string) error {
 
 	args := []string{
 		"purge", remoteName,
-		"--config", "./rclone.conf",
+		"--config", getRcloneConfig(),
 	}
 
-	cmd := exec.Command("./rclone.exe", args...)
+	cmd := exec.Command(getToolPath("rclone.exe"), args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
 	// We don't need to stream logs for this, just run it

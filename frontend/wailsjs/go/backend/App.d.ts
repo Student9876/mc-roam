@@ -6,6 +6,8 @@ export function AuthorizeDrive(arg1:string,arg2:string):Promise<string>;
 
 export function CheckCloudExists(arg1:string):Promise<boolean>;
 
+export function CheckDependencies():Promise<boolean>;
+
 export function CleanLocks(arg1:string):Promise<void>;
 
 export function CreateServer(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
@@ -31,6 +33,8 @@ export function Greet(arg1:string):Promise<string>;
 export function ImportPlayitConfig(arg1:string):Promise<string>;
 
 export function InjectConfig(arg1:string):Promise<void>;
+
+export function InstallDependencies():Promise<void>;
 
 export function InstallServer(arg1:string):Promise<string>;
 
