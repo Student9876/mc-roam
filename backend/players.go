@@ -39,7 +39,12 @@ func (a *App) GetPlayerLists(serverID string) PlayerLists {
 }
 
 // ManagePlayer sends commands to modify lists (ONLY if server is running)
-func (a *App) ManagePlayer(serverID string, action string, target string, extra string) string {
+func (a *App) ManagePlayer(serverID string, username string, action string, target string, extra string) string {
+	// Permission check: Only owner or admins can manage players
+	if !a.IsAdmin(serverID, username) {
+		return "Error: Only admins can manage players"
+	}
+
 	// action: "op", "deop", "whitelist add", "whitelist remove", "ban", "pardon"
 
 	// Check if server is online (Commands require a running server)
@@ -96,7 +101,7 @@ func (a *App) ManagePlayer(serverID string, action string, target string, extra 
 		return "Error: Unknown action"
 	}
 
-	return a.SendConsoleCommand(serverID, command)
+	return a.SendConsoleCommand(serverID, username, command)
 }
 
 // Helper to read generic JSON lists

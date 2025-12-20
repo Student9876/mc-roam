@@ -22,6 +22,8 @@ export function ForceKillPort(arg1:number):Promise<void>;
 
 export function ForceSyncUp(arg1:string):Promise<string>;
 
+export function GetAdmins(arg1:string):Promise<Array<string>>;
+
 export function GetMyServers(arg1:string):Promise<Array<backend.ServerGroup>>;
 
 export function GetPlayerLists(arg1:string):Promise<backend.PlayerLists>;
@@ -40,6 +42,8 @@ export function InstallDependencies():Promise<void>;
 
 export function InstallServer(arg1:string):Promise<string>;
 
+export function IsAdmin(arg1:string,arg2:string):Promise<boolean>;
+
 export function JoinServer(arg1:string,arg2:string):Promise<string>;
 
 export function KillMinecraftServer():Promise<void>;
@@ -54,23 +58,27 @@ export function Log(arg1:string):Promise<void>;
 
 export function Login(arg1:string,arg2:string):Promise<string>;
 
-export function ManagePlayer(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
+export function ManagePlayer(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
 
 export function PurgeRemote(arg1:string):Promise<void>;
 
 export function Register(arg1:string,arg2:string):Promise<string>;
 
+export function RemoveAdmin(arg1:string,arg2:string,arg3:string):Promise<string>;
+
 export function RunMinecraftServer(arg1:string,arg2:number):Promise<void>;
 
 export function RunSync(arg1:backend.SyncDirection,arg2:string,arg3:string):Promise<void>;
 
-export function SaveServerOptions(arg1:string,arg2:backend.ServerProps):Promise<string>;
+export function SaveServerOptions(arg1:string,arg2:string,arg3:backend.ServerProps):Promise<string>;
 
-export function SaveWorldSetting(arg1:string,arg2:string,arg3:any):Promise<string>;
+export function SaveWorldSetting(arg1:string,arg2:string,arg3:string,arg4:any):Promise<string>;
 
 export function SeedVersions():Promise<void>;
 
-export function SendConsoleCommand(arg1:string,arg2:string):Promise<string>;
+export function SendConsoleCommand(arg1:string,arg2:string,arg3:string):Promise<string>;
+
+export function SetAdmin(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function StartPlayitTunnel(arg1:string):Promise<void>;
 

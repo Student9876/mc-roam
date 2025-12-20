@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 
-const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings, onWorld, onPlayers }) => {
+const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings, onWorld, onPlayers, onAdmins }) => {
     const { name, invite_code, status } = server;
     const owner = server.owner || server.owner_id; // Support both field names
     const isRunning = server.lock.is_running;
     const isOnline = status === 'ONLINE' || isRunning;
 
-    // Logic: Only the Creator (Owner) can delete.
+    // Logic: Check if user is owner
     const isOwner = (owner === currentUser);
+    
+    // Logic: Check if user is admin (includes owner)
+    const isAdmin = isOwner || (server.admins && server.admins.includes(currentUser));
     
     // Logic: Check if current user is the one hosting (can stop)
     const isHost = (server.lock.hosted_by === currentUser);
@@ -214,7 +217,8 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
                     </div>
                     <div style={styles.iconGroup}>
                         {/* Only Owner sees Player Manager */}
-                        {isOwner && (
+                        {/* Admins can manage players */}
+                        {isAdmin && (
                             <button 
                                 style={styles.iconBtn} 
                                 onClick={onPlayers} 
@@ -223,8 +227,8 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
                                 <span style={{ fontSize: '14px' }}>👤</span>
                             </button>
                         )}
-                        {/* Only Owner sees World Settings (when running) */}
-                        {isOwner && isRunning && (
+                        {/* Admins can see World Settings (when running) */}
+                        {isAdmin && isRunning && (
                             <button 
                                 style={styles.iconBtn} 
                                 onClick={onWorld} 
@@ -233,10 +237,20 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
                                 <span style={{ fontSize: '14px' }}>🌍</span>
                             </button>
                         )}
-                        {/* Only Owner sees Settings */}
-                        {isOwner && (
+                        {/* Admins can see Settings */}
+                        {isAdmin && (
                             <button style={styles.iconBtn} onClick={onSettings} title="Settings">
                                 <span style={{ fontSize: '14px' }}>⚙</span>
+                            </button>
+                        )}
+                        {/* Only Owner sees Admin Management */}
+                        {isOwner && (
+                            <button 
+                                style={styles.iconBtn} 
+                                onClick={onAdmins} 
+                                title="Admin Management"
+                            >
+                                <span style={{ fontSize: '14px' }}>👑</span>
                             </button>
                         )}
                         {/* Only Owner sees Delete (and only when stopped) */}

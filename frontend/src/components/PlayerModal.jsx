@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { GetPlayerLists, ManagePlayer } from '../../wailsjs/go/backend/App';
 import PlayerDetail from './PlayerDetail';
 
-export default function PlayerModal({ server, onClose }) {
+export default function PlayerModal({ server, currentUser, onClose }) {
     const [lists, setLists] = useState({ ops: [], whitelist: [], banned: [], history: [] });
     const [activeTab, setActiveTab] = useState("HISTORY");
     const [inputName, setInputName] = useState("");
@@ -29,8 +29,8 @@ export default function PlayerModal({ server, onClose }) {
             return;
         }
 
-        // Now calling ManagePlayer with 4 arguments
-        const res = await ManagePlayer(server.id, action, targetName, extra);
+        // Now calling ManagePlayer with 5 arguments including username
+        const res = await ManagePlayer(server.id, currentUser, action, targetName, extra);
         if (res === "Success") {
             // Wait a sec for server to update JSON files, then refresh UI
             setTimeout(() => setRefreshTrigger(prev => prev + 1), 1000);

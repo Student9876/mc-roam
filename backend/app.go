@@ -253,7 +253,12 @@ func (a *App) Log(message string) {
 }
 
 // SendConsoleCommand injects a command into the running Minecraft server
-func (a *App) SendConsoleCommand(serverID string, command string) string {
+func (a *App) SendConsoleCommand(serverID string, username string, command string) string {
+	// Permission check: Only owner or admins can send console commands
+	if !a.IsAdmin(serverID, username) {
+		return "Error: Only admins can send console commands"
+	}
+
 	// Security: Only allow if this is the currently running server
 	// (In a multi-server app, you'd check a map of activeCmds.
 	// For now, we use the global activeCmd/stdinPipe you set up earlier)
@@ -274,7 +279,12 @@ func (a *App) SendConsoleCommand(serverID string, command string) string {
 }
 
 // SaveWorldSetting saves a world setting to the database (So the UI remembers your toggles)
-func (a *App) SaveWorldSetting(serverID string, key string, value interface{}) string {
+func (a *App) SaveWorldSetting(serverID string, username string, key string, value interface{}) string {
+	// Permission check: Only owner or admins can modify world settings
+	if !a.IsAdmin(serverID, username) {
+		return "Error: Only admins can modify world settings"
+	}
+
 	collection := DB.Client.Database("mc_roam").Collection("servers")
 	ctx := context.TODO()
 
@@ -706,4 +716,147 @@ func (a *App) DeleteServer(serverID string, username string) string {
 	}()
 
 	return "Success"
+}
+
+// ============================================
+// ADMIN MANAGEMENT SYSTEM
+// ============================================
+
+// IsAdmin checks if a user is owner or admin of a server
+func (a *App) IsAdmin(serverID string, username string) bool {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var server ServerGroup
+	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&server)
+	if err != nil {
+		return false
+	}
+
+	// Owner is always admin
+	if server.OwnerID == username {
+		return true
+	}
+
+	// Check if user is in admins list
+	for _, admin := range server.Admins {
+		if admin == username {
+			return true
+		}
+	}
+
+	return false
+}
+
+// SetAdmin adds a user to the server's admin list
+func (a *App) SetAdmin(serverID string, targetUsername string, requesterUsername string) string {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// 1. Fetch server
+	var server ServerGroup
+	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&server)
+	if err != nil {
+		return "Error: Server not found"
+	}
+
+	// 2. Only owner can assign admins
+	if server.OwnerID != requesterUsername {
+		return "Error: Only the server owner can assign admins"
+	}
+
+	// 3. Can't admin yourself (owner is already admin by default)
+	if targetUsername == requesterUsername {
+		return "Error: You are already the owner"
+	}
+
+	// 4. Check if target is a member
+	isMember := false
+	for _, member := range server.Members {
+		if member == targetUsername {
+			isMember = true
+			break
+		}
+	}
+	if !isMember {
+		return "Error: User must be a server member first"
+	}
+
+	// 5. Check if already admin
+	for _, admin := range server.Admins {
+		if admin == targetUsername {
+			return "Error: User is already an admin"
+		}
+	}
+
+	// 6. Add to admins list
+	_, err = collection.UpdateOne(
+		ctx,
+		bson.M{"_id": serverID},
+		bson.M{"$push": bson.M{"admins": targetUsername}},
+	)
+	if err != nil {
+		return "Error: Failed to update database"
+	}
+
+	a.Log(fmt.Sprintf("✅ %s is now an admin of this server", targetUsername))
+	return "Success"
+}
+
+// RemoveAdmin removes a user from the server's admin list
+func (a *App) RemoveAdmin(serverID string, targetUsername string, requesterUsername string) string {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// 1. Fetch server
+	var server ServerGroup
+	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&server)
+	if err != nil {
+		return "Error: Server not found"
+	}
+
+	// 2. Only owner can remove admins
+	if server.OwnerID != requesterUsername {
+		return "Error: Only the server owner can remove admins"
+	}
+
+	// 3. Can't remove owner
+	if targetUsername == server.OwnerID {
+		return "Error: Cannot remove owner from admin status"
+	}
+
+	// 4. Remove from admins list
+	_, err = collection.UpdateOne(
+		ctx,
+		bson.M{"_id": serverID},
+		bson.M{"$pull": bson.M{"admins": targetUsername}},
+	)
+	if err != nil {
+		return "Error: Failed to update database"
+	}
+
+	a.Log(fmt.Sprintf("ℹ️ %s is no longer an admin", targetUsername))
+	return "Success"
+}
+
+// GetAdmins returns the list of server admins (including owner)
+func (a *App) GetAdmins(serverID string) []string {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var server ServerGroup
+	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&server)
+	if err != nil {
+		return []string{}
+	}
+
+	// Include owner in the list
+	admins := []string{server.OwnerID + " (Owner)"}
+	admins = append(admins, server.Admins...)
+
+	return admins
 }

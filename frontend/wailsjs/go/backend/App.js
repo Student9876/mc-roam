@@ -42,6 +42,10 @@ export function ForceSyncUp(arg1) {
   return window['go']['backend']['App']['ForceSyncUp'](arg1);
 }
 
+export function GetAdmins(arg1) {
+  return window['go']['backend']['App']['GetAdmins'](arg1);
+}
+
 export function GetMyServers(arg1) {
   return window['go']['backend']['App']['GetMyServers'](arg1);
 }
@@ -78,6 +82,10 @@ export function InstallServer(arg1) {
   return window['go']['backend']['App']['InstallServer'](arg1);
 }
 
+export function IsAdmin(arg1, arg2) {
+  return window['go']['backend']['App']['IsAdmin'](arg1, arg2);
+}
+
 export function JoinServer(arg1, arg2) {
   return window['go']['backend']['App']['JoinServer'](arg1, arg2);
 }
@@ -106,8 +114,8 @@ export function Login(arg1, arg2) {
   return window['go']['backend']['App']['Login'](arg1, arg2);
 }
 
-export function ManagePlayer(arg1, arg2, arg3, arg4) {
-  return window['go']['backend']['App']['ManagePlayer'](arg1, arg2, arg3, arg4);
+export function ManagePlayer(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['backend']['App']['ManagePlayer'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function PurgeRemote(arg1) {
@@ -118,6 +126,10 @@ export function Register(arg1, arg2) {
   return window['go']['backend']['App']['Register'](arg1, arg2);
 }
 
+export function RemoveAdmin(arg1, arg2, arg3) {
+  return window['go']['backend']['App']['RemoveAdmin'](arg1, arg2, arg3);
+}
+
 export function RunMinecraftServer(arg1, arg2) {
   return window['go']['backend']['App']['RunMinecraftServer'](arg1, arg2);
 }
@@ -126,20 +138,24 @@ export function RunSync(arg1, arg2, arg3) {
   return window['go']['backend']['App']['RunSync'](arg1, arg2, arg3);
 }
 
-export function SaveServerOptions(arg1, arg2) {
-  return window['go']['backend']['App']['SaveServerOptions'](arg1, arg2);
+export function SaveServerOptions(arg1, arg2, arg3) {
+  return window['go']['backend']['App']['SaveServerOptions'](arg1, arg2, arg3);
 }
 
-export function SaveWorldSetting(arg1, arg2, arg3) {
-  return window['go']['backend']['App']['SaveWorldSetting'](arg1, arg2, arg3);
+export function SaveWorldSetting(arg1, arg2, arg3, arg4) {
+  return window['go']['backend']['App']['SaveWorldSetting'](arg1, arg2, arg3, arg4);
 }
 
 export function SeedVersions() {
   return window['go']['backend']['App']['SeedVersions']();
 }
 
-export function SendConsoleCommand(arg1, arg2) {
-  return window['go']['backend']['App']['SendConsoleCommand'](arg1, arg2);
+export function SendConsoleCommand(arg1, arg2, arg3) {
+  return window['go']['backend']['App']['SendConsoleCommand'](arg1, arg2, arg3);
+}
+
+export function SetAdmin(arg1, arg2, arg3) {
+  return window['go']['backend']['App']['SetAdmin'](arg1, arg2, arg3);
 }
 
 export function StartPlayitTunnel(arg1) {

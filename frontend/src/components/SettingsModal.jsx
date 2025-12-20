@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { GetServerOptions, SaveServerOptions } from '../../wailsjs/go/backend/App';
 import './SettingsModal.css';
 
-export default function SettingsModal({ serverId, onClose }) {
+export default function SettingsModal({ serverId, currentUser, onClose }) {
     const [props, setProps] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -17,7 +17,7 @@ export default function SettingsModal({ serverId, onClose }) {
     };
 
     const handleSave = async () => {
-        const result = await SaveServerOptions(serverId, props);
+        const result = await SaveServerOptions(serverId, currentUser, props);
         alert(result);
         onClose();
     };

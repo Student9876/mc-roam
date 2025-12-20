@@ -46,7 +46,7 @@ const RULE_CATEGORIES = {
     ]
 };
 
-export default function WorldModal({ server, onClose }) {
+export default function WorldModal({ server, currentUser, onClose }) {
     // Add custom scrollbar styles
     useEffect(() => {
         const styleId = 'world-modal-scrollbar';
@@ -119,19 +119,19 @@ export default function WorldModal({ server, onClose }) {
              // FOR NOW: We just save state. 
              // To support Real-Time PVP, plugins are usually needed.
         } else {
-            await SendConsoleCommand(server.id, `gamerule ${id} ${newVal}`);
+            await SendConsoleCommand(server.id, currentUser, `gamerule ${id} ${newVal}`);
         }
         
-        await SaveWorldSetting(server.id, id, newVal);
+        await SaveWorldSetting(server.id, currentUser, id, newVal);
     };
 
     const handleSelect = async (id, val) => {
         setSettings(prev => ({ ...prev, [id]: val }));
         
         if (id === 'difficulty') {
-            await SendConsoleCommand(server.id, `difficulty ${val}`);
+            await SendConsoleCommand(server.id, currentUser, `difficulty ${val}`);
         }
-        await SaveWorldSetting(server.id, id, val);
+        await SaveWorldSetting(server.id, currentUser, id, val);
     };
 
     const handleIntegerChange = async (id, val) => {
@@ -139,8 +139,8 @@ export default function WorldModal({ server, onClose }) {
         if (isNaN(num)) return;
         
         setSettings(prev => ({ ...prev, [id]: num }));
-        await SendConsoleCommand(server.id, `gamerule ${id} ${num}`);
-        await SaveWorldSetting(server.id, id, num);
+        await SendConsoleCommand(server.id, currentUser, `gamerule ${id} ${num}`);
+        await SaveWorldSetting(server.id, currentUser, id, num);
     };
 
     return (

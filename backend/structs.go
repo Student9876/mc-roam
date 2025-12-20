@@ -34,6 +34,7 @@ type ServerGroup struct {
 	OwnerID       string                 `bson:"owner_id" json:"owner_id"`
 	Owner         string                 `bson:"-" json:"owner"`
 	Members       []string               `bson:"members" json:"members"`
+	Admins        []string               `bson:"admins" json:"admins"` // List of usernames with admin privileges
 	RcloneConfig  string                 `bson:"rclone_config" json:"-"`
 	WorldSettings map[string]interface{} `bson:"world_settings" json:"world_settings"` // Stores { "keepInventory": true, "difficulty": "hard" }
 	Lock          ServerLock             `bson:"lock" json:"lock"`

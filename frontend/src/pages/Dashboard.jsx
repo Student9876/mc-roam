@@ -7,6 +7,7 @@ import { EventsOn } from '../../wailsjs/runtime/runtime';
 import SettingsModal from '../components/SettingsModal';
 import WorldModal from '../components/WorldModal';
 import PlayerModal from '../components/PlayerModal';
+import AdminModal from '../components/AdminModal';
 import Terminal from '../components/Terminal';
 import ServerCard from '../components/ServerCard'; // <--- IMPORT THE NEW COMPONENT
 
@@ -46,6 +47,7 @@ export default function Dashboard() {
     const [settingsServerId, setSettingsServerId] = useState(null);
     const [worldSettingsId, setWorldSettingsId] = useState(null);
     const [playerId, setPlayerId] = useState(null);
+    const [adminModalId, setAdminModalId] = useState(null);
 
     const currentUser = sessionStorage.getItem("mc_username") || "Unknown";
     const navigate = useNavigate();
@@ -338,6 +340,7 @@ export default function Dashboard() {
                                     onSettings={() => setSettingsServerId(server.id)}
                                     onWorld={() => setWorldSettingsId(server.id)}
                                     onPlayers={() => setPlayerId(server.id)}
+                                    onAdmins={() => setAdminModalId(server.id)}
                                     onDelete={() => handleDelete(server.id)}
                                 />
                             ))}
@@ -554,17 +557,26 @@ export default function Dashboard() {
             <Terminal selectedServer={servers.find(s => s.lock?.is_running) || null} />
 
             {/* MODALS */}
-            {settingsServerId && <SettingsModal serverId={settingsServerId} onClose={() => setSettingsServerId(null)} />}
+            {settingsServerId && <SettingsModal serverId={settingsServerId} currentUser={currentUser} onClose={() => setSettingsServerId(null)} />}
             {worldSettingsId && (
                 <WorldModal 
-                    server={servers.find(s => s.id === worldSettingsId)} 
+                    server={servers.find(s => s.id === worldSettingsId)}
+                    currentUser={currentUser}
                     onClose={() => setWorldSettingsId(null)} 
                 />
             )}
             {playerId && (
                 <PlayerModal 
-                    server={servers.find(s => s.id === playerId)} 
+                    server={servers.find(s => s.id === playerId)}
+                    currentUser={currentUser}
                     onClose={() => setPlayerId(null)} 
+                />
+            )}
+            {adminModalId && (
+                <AdminModal 
+                    server={servers.find(s => s.id === adminModalId)}
+                    currentUser={currentUser}
+                    onClose={() => setAdminModalId(null)} 
                 />
             )}
 

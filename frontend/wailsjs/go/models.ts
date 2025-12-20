@@ -108,6 +108,7 @@ export namespace backend {
 	    owner_id: string;
 	    owner: string;
 	    members: string[];
+	    admins: string[];
 	    world_settings: Record<string, any>;
 	    lock: ServerLock;
 	
@@ -125,6 +126,7 @@ export namespace backend {
 	        this.owner_id = source["owner_id"];
 	        this.owner = source["owner"];
 	        this.members = source["members"];
+	        this.admins = source["admins"];
 	        this.world_settings = source["world_settings"];
 	        this.lock = this.convertValues(source["lock"], ServerLock);
 	    }

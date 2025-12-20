@@ -89,7 +89,12 @@ func (a *App) GetServerOptions(serverID string) ServerProps {
 }
 
 // SaveServerOptions writes the struct back to the file
-func (a *App) SaveServerOptions(serverID string, props ServerProps) string {
+func (a *App) SaveServerOptions(serverID string, username string, props ServerProps) string {
+	// Permission check: Only owner or admins can modify server options
+	if !a.IsAdmin(serverID, username) {
+		return "Error: Only admins can modify server options"
+	}
+
 	path := filepath.Join(a.getInstancePath(serverID), "server.properties")
 
 	// We read the whole file to preserve comments and formatting for other keys
