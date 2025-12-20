@@ -304,10 +304,14 @@ export default function Dashboard() {
                     <button style={view === "join" ? styles.navBtnActive : styles.navBtn} onClick={() => setView("join")}>
                         🔗 Join
                     </button>
-                    <button onClick={() => { sessionStorage.clear(); navigate("/"); }} style={styles.logoutBtn}>
-                        Logout
+                    <button style={view === "account" ? styles.navBtnActive : styles.navBtn} onClick={() => setView("account")}>
+                        👤 Account
                     </button>
                 </nav>
+                
+                <button onClick={() => { sessionStorage.clear(); navigate("/"); }} style={styles.logoutBtn}>
+                    Logout
+                </button>
             </div>
 
             {/* MAIN CONTENT AREA */}
@@ -351,8 +355,6 @@ export default function Dashboard() {
                             <span style={{color: createStep>=1 ? '#fab005' : '#444', fontWeight: createStep===1 ? 'bold' : 'normal'}}>1. Details</span>
                             <span style={{color:'#444'}}>→</span>
                             <span style={{color: createStep>=2 ? '#fab005' : '#444', fontWeight: createStep===2 ? 'bold' : 'normal'}}>2. Cloud</span>
-                            <span style={{color:'#444'}}>→</span>
-                            <span style={{color: createStep>=3 ? '#fab005' : '#444', fontWeight: createStep===3 ? 'bold' : 'normal'}}>3. Network</span>
                         </div>
 
                         {/* STEP 1: DETAILS */}
@@ -427,102 +429,37 @@ export default function Dashboard() {
                                         <div style={styles.connectedBadge}>✅ Google Drive Connected</div>
                                     )}
                                 </div>
+                                
+                                <div style={{background:'#27272a', padding:'15px', borderRadius:'8px', marginBottom:'20px', fontSize:'0.85rem', lineHeight:'1.5', color:'#aaa'}}>
+                                    <div style={{marginBottom:'8px', color:'#fab005', fontWeight:'bold'}}>🌐 Public Access (Optional)</div>
+                                    <p style={{margin:0}}>To enable public access for this server, set up your Playit account in <b>Account Settings</b> (sidebar) before hosting.</p>
+                                </div>
+
                                 <div style={{display:'flex', gap:'10px'}}>
                                     <button style={styles.secondaryBtn} onClick={() => setCreateStep(1)}>← Back</button>
                                     <button 
                                         style={styles.primaryBtn} 
                                         disabled={!rcloneConf} 
-                                        onClick={() => setCreateStep(3)}
+                                        onClick={async () => {
+                                            const id = await CreateServer(newServerName, selectedType, selectedVersion, currentUser, rcloneConf);
+                                            if (id.startsWith("Error")) {
+                                                alert(id);
+                                                return;
+                                            }
+                                            
+                                            alert("✅ Server created successfully!");
+                                            setNewServerName("");
+                                            setRcloneConf("");
+                                            setCreateStep(1);
+                                            setCreatedServerId(null);
+                                            loadServers();
+                                            setView("dashboard");
+                                        }}
                                     >
-                                        Next: Network →
+                                        ✅ Create Server
                                     </button>
                                 </div>
                             </>
-                        )}
-
-                        {/* STEP 3: NETWORK SETUP (IMPORT METHOD) */}
-                        {createStep === 3 && (
-                            <div style={{animation: "fadeIn 0.3s"}}>
-                                <div style={styles.formGroup}>
-                                    <label style={{fontSize:'1rem', fontWeight:'600', marginBottom:'15px', display:'block'}}>Public Access Setup</label>
-                                    
-                                    <div style={{background:'#27272a', padding:'15px', borderRadius:'8px', marginBottom:'20px', fontSize:'0.9rem', lineHeight:'1.6', color:'#ddd', textAlign:'left'}}>
-                                        <div style={{marginBottom:'10px', fontWeight:'bold', color:'#fab005'}}>Instructions:</div>
-                                        <ol style={{paddingLeft:'20px', margin:0, textAlign:'left'}}>
-                                            <li style={{marginBottom:'6px'}}>Click <b>"Launch Setup Terminal"</b> below.</li>
-                                            <li style={{marginBottom:'6px'}}>Copy the <span style={{color:'#4dabf7', fontFamily:'monospace'}}>https://playit.gg/claim/...</span> link, <b>Claim it</b> in your browser.</li>
-                                            <li style={{marginBottom:'6px'}}>Once it says "Agent Online", you can close the terminal.</li>
-                                            <li>Click <b>"Import Config & Finish"</b> below.</li>
-                                        </ol>
-                                    </div>
-
-                                    <button 
-                                        style={{
-                                            ...styles.secondaryBtn, 
-                                            width:'100%', 
-                                            justifyContent:'center',
-                                            border:'1px solid #fab005', 
-                                            color:'#fab005',
-                                            background:'rgba(250, 176, 5, 0.1)',
-                                            marginBottom:'20px'
-                                        }} 
-                                        onClick={async () => {
-                                            if (!newServerName) return;
-                                            let id = createdServerId;
-                                            if (!id) {
-                                                id = await CreateServer(newServerName, selectedType, selectedVersion, currentUser, rcloneConf);
-                                                if (id.startsWith("Error")) {
-                                                    alert(id);
-                                                    return;
-                                                }
-                                                setCreatedServerId(id);
-                                            }
-                                            const result = await LaunchPlayitExternally(id);
-                                            if (result.startsWith("Error")) {
-                                                alert(result);
-                                            }
-                                        }}
-                                    >
-                                        🚀 Launch Setup Terminal
-                                    </button>
-                                </div>
-
-                                <div style={{display:'flex', gap:'10px', marginTop:'20px'}}>
-                                    <button style={styles.secondaryBtn} onClick={() => setCreateStep(2)}>← Back</button>
-                                    
-                                    <button 
-                                        style={{
-                                            ...styles.primaryBtn,
-                                            opacity: !createdServerId ? 0.5 : 1,
-                                            cursor: !createdServerId ? 'not-allowed' : 'pointer'
-                                        }} 
-                                        disabled={!createdServerId}
-                                        onClick={async () => {
-                                            // 1. Import the file from AppData
-                                            const res = await ImportPlayitConfig(createdServerId);
-                                            
-                                            if (res === "Success") {
-                                                // 2. Upload to Cloud
-                                                await ForceSyncUp(createdServerId);
-                                                
-                                                // 3. Done - Reset wizard
-                                                setNewServerName("");
-                                                setRcloneConf("");
-                                                setCreateStep(1);
-                                                setCreatedServerId(null);
-                                                
-                                                alert("✅ Setup Complete! Config imported and synced.");
-                                                loadServers();
-                                                setView("dashboard");
-                                            } else {
-                                                alert("❌ " + res);
-                                            }
-                                        }}
-                                    >
-                                        Import Config & Finish
-                                    </button>
-                                </div>
-                            </div>
                         )}
                     </div>
                 )}
@@ -535,6 +472,79 @@ export default function Dashboard() {
                         <div style={{ display: "flex", gap: "10px" }}>
                             <input style={styles.input} value={inviteCode} onChange={e => setInviteCode(e.target.value)} placeholder="Enter Invite Code" />
                             <button onClick={handleJoin} style={styles.primaryBtn}>Join</button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Account Settings View */}
+                {view === "account" && (
+                    <div style={{ maxWidth: "600px" }}>
+                        <h1 style={styles.pageTitle}>Account Settings</h1>
+                        
+                        <div style={{ background: '#1e1e1e', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
+                            <h3 style={{ color: '#fab005', marginBottom: '15px' }}>🌐 Public Access (Playit.gg)</h3>
+                            <p style={{ color: '#aaa', fontSize: '0.9rem', marginBottom: '20px' }}>
+                                Set up your Playit.gg tunnel to allow friends to join your servers from anywhere.
+                                This setup is done once and works for all servers you host.
+                            </p>
+                            
+                            <div style={{background:'#27272a', padding:'15px', borderRadius:'8px', marginBottom:'20px', fontSize:'0.9rem', lineHeight:'1.6', color:'#ddd', textAlign:'left'}}>
+                                <div style={{marginBottom:'10px', fontWeight:'bold', color:'#fab005'}}>Instructions:</div>
+                                <ol style={{paddingLeft:'20px', margin:0, textAlign:'left'}}>
+                                    <li style={{marginBottom:'6px'}}>Click <b>"Launch Setup Terminal"</b> below.</li>
+                                    <li style={{marginBottom:'6px'}}>Copy the <span style={{color:'#4dabf7', fontFamily:'monospace'}}>https://playit.gg/claim/...</span> link, <b>Claim it</b> in your browser.</li>
+                                    <li style={{marginBottom:'6px'}}>Once it says "Agent Online", you can close the terminal.</li>
+                                    <li>Click <b>"Save Playit Config"</b> below.</li>
+                                </ol>
+                            </div>
+
+                            <button 
+                                style={{
+                                    ...styles.secondaryBtn, 
+                                    width:'100%', 
+                                    justifyContent:'center',
+                                    border:'1px solid #fab005', 
+                                    color:'#fab005',
+                                    background:'rgba(250, 176, 5, 0.1)',
+                                    marginBottom:'15px'
+                                }} 
+                                onClick={async () => {
+                                    const result = await LaunchPlayitExternally("temp");
+                                    if (result.startsWith("Error")) {
+                                        alert(result);
+                                    }
+                                }}
+                            >
+                                🚀 Launch Setup Terminal
+                            </button>
+
+                            <button 
+                                style={{
+                                    ...styles.primaryBtn,
+                                    width: '100%',
+                                    justifyContent: 'center'
+                                }}
+                                onClick={async () => {
+                                    const res = await ImportPlayitConfig(currentUser);
+                                    
+                                    if (res === "Success") {
+                                        alert("✅ Playit config saved to your account! Your tunnel will work on any server you host.");
+                                    } else {
+                                        alert(res);
+                                    }
+                                }}
+                            >
+                                💾 Save Playit Config
+                            </button>
+                        </div>
+
+                        <div style={{ background: '#1e1e1e', padding: '20px', borderRadius: '12px' }}>
+                            <h3 style={{ color: '#fab005', marginBottom: '10px' }}>👤 User Info</h3>
+                            <div style={{ color: '#aaa', fontSize: '0.9rem' }}>
+                                <div style={{ marginBottom: '8px' }}>
+                                    <span style={{ color: '#666' }}>Username:</span> <span style={{ color: '#fff', fontWeight: 'bold' }}>{currentUser}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

@@ -8,6 +8,8 @@ export function CheckCloudExists(arg1:string):Promise<boolean>;
 
 export function CheckDependencies():Promise<boolean>;
 
+export function CheckUserHasPlayit(arg1:string):Promise<boolean>;
+
 export function CleanLocks(arg1:string):Promise<void>;
 
 export function CreateServer(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;

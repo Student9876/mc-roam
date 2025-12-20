@@ -57,8 +57,8 @@ func (a *App) LaunchPlayitExternally(serverID string) string {
 	return "Success"
 }
 
-// 2. Import the config from AppData to our Server Folder
-func (a *App) ImportPlayitConfig(serverID string) string {
+// 2. Import the config from AppData and save to User's DB record
+func (a *App) ImportPlayitConfig(username string) string {
 	// Construct path: C:\Users\User\AppData\Local\playit_gg\playit.toml
 	homeDir, _ := os.UserHomeDir()
 	globalConfigPath := filepath.Join(homeDir, "AppData", "Local", "playit_gg", "playit.toml")
@@ -74,28 +74,70 @@ func (a *App) ImportPlayitConfig(serverID string) string {
 		return "Error reading config: " + err.Error()
 	}
 
-	// Destination: instances/srv_ID/playit.toml
-	instanceDir := a.getInstancePath(serverID)
-	os.MkdirAll(instanceDir, 0755)
-	destPath := filepath.Join(instanceDir, "playit.toml")
+	// Save to user's database record
+	collection := DB.Client.Database("mc_roam").Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	// Write to server folder
-	err = os.WriteFile(destPath, content, 0644)
-	if err != nil {
-		return "Error saving to server: " + err.Error()
+	update := bson.M{
+		"$set": bson.M{
+			"playit_toml_content": string(content),
+		},
 	}
 
-	a.Log("✅ Successfully imported Playit config!")
+	_, err = collection.UpdateOne(ctx, bson.M{"username": username}, update)
+	if err != nil {
+		return "Error saving to database: " + err.Error()
+	}
+
+	a.Log("✅ Successfully saved Playit config to your account!")
 	return "Success"
 }
 
-// 3. Start Tunnel (Standard)
+// 3. Start Tunnel (Standard) with retry logic for cloud deployments
 func (a *App) StartPlayitTunnel(serverID string) {
 	if err := a.ensurePlayitBinary(); err != nil {
 		return
 	}
 
 	instanceDir := a.getInstancePath(serverID)
+
+	// Verify playit.toml exists before attempting to start
+	playitConfigPath := filepath.Join(instanceDir, "playit.toml")
+	if _, err := os.Stat(playitConfigPath); os.IsNotExist(err) {
+		a.Log("⚠️ Playit config not found. Skipping tunnel setup.")
+		return
+	}
+
+	// Add a small delay to ensure network is ready (especially on cloud)
+	time.Sleep(2 * time.Second)
+
+	// Retry logic for cloud servers with network issues
+	maxRetries := 3
+	retryDelay := 5 * time.Second
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		if attempt > 1 {
+			a.Log(fmt.Sprintf("🔄 Retry attempt %d/%d...", attempt, maxRetries))
+			time.Sleep(retryDelay)
+		}
+
+		if a.attemptStartPlayit(serverID, instanceDir) {
+			return // Success
+		}
+
+		if attempt < maxRetries {
+			a.Log(fmt.Sprintf("⚠️ Connection failed. Retrying in %v seconds...", retryDelay.Seconds()))
+		}
+	}
+
+	a.Log("❌ Failed to establish Playit tunnel after multiple attempts.")
+	a.Log("💡 Possible causes: Firewall blocking, network issues, or invalid secret key.")
+	a.Log("💡 Try: 1) Check firewall settings 2) Verify internet connection 3) Re-import Playit config")
+}
+
+// attemptStartPlayit tries to start the Playit tunnel once
+func (a *App) attemptStartPlayit(serverID string, instanceDir string) bool {
 	absPath, _ := filepath.Abs(getPlayitBin())
 
 	cmd := exec.Command(absPath)
@@ -105,26 +147,46 @@ func (a *App) StartPlayitTunnel(serverID string) {
 	// Capture output pipe instead of dumping to os.Stdout
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		a.Log("⚠️ Failed to start Playit tunnel.")
-		return
+		a.Log("⚠️ Failed to create output pipe.")
+		return false
 	}
 	// Merge Stderr into Stdout to catch errors too
 	cmd.Stderr = cmd.Stdout
 
 	if err := cmd.Start(); err != nil {
-		a.Log("⚠️ Failed to start Playit tunnel.")
-		return
+		a.Log(fmt.Sprintf("⚠️ Failed to start Playit: %v", err))
+		return false
 	}
 
 	a.Log("🔗 Starting Playit tunnel...")
 
-	// Read logs and Emit to Frontend
+	// Read logs and Emit to Frontend with connection validation
+	connectionSuccess := make(chan bool, 1)
+	errorDetected := make(chan bool, 1)
+
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
 			// Prefix with [Playit] so we can filter it in the Console tab
 			a.Log("[Playit]: " + line)
+
+			// Detect connection errors
+			if strings.Contains(line, "Error:") || strings.Contains(line, "RequestError") ||
+				strings.Contains(line, "ConnectionReset") || strings.Contains(line, "forcibly closed") {
+				select {
+				case errorDetected <- true:
+				default:
+				}
+			}
+
+			// Detect successful connection
+			if strings.Contains(line, "agent has") && strings.Contains(line, "tunnel") {
+				select {
+				case connectionSuccess <- true:
+				default:
+				}
+			}
 
 			// Look for tunnel URL pattern and save it
 			if strings.Contains(line, "playit.gg") {
@@ -134,16 +196,40 @@ func (a *App) StartPlayitTunnel(serverID string) {
 					if url != "" {
 						a.saveTunnelURL(serverID, url)
 						a.Log(fmt.Sprintf("🌐 Public Address: %s", url))
+						select {
+						case connectionSuccess <- true:
+						default:
+						}
 					}
 				} else if strings.Contains(line, "playit.gg") {
 					if addr := extractPlayitAddress(line); addr != "" {
 						a.saveTunnelURL(serverID, addr)
 						a.Log(fmt.Sprintf("🌐 Public Address: %s", addr))
+						select {
+						case connectionSuccess <- true:
+						default:
+						}
 					}
 				}
 			}
 		}
 	}()
+
+	// Wait for either success or failure with timeout
+	timeout := time.After(30 * time.Second)
+	select {
+	case <-connectionSuccess:
+		a.Log("✅ Playit tunnel established successfully!")
+		return true
+	case <-errorDetected:
+		a.Log("⚠️ Connection error detected")
+		cmd.Process.Kill()
+		return false
+	case <-timeout:
+		a.Log("⚠️ Tunnel startup timeout")
+		cmd.Process.Kill()
+		return false
+	}
 }
 
 // Helper to extract URL from line

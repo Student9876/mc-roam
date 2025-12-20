@@ -14,6 +14,10 @@ export function CheckDependencies() {
   return window['go']['backend']['App']['CheckDependencies']();
 }
 
+export function CheckUserHasPlayit(arg1) {
+  return window['go']['backend']['App']['CheckUserHasPlayit'](arg1);
+}
+
 export function CleanLocks(arg1) {
   return window['go']['backend']['App']['CleanLocks'](arg1);
 }

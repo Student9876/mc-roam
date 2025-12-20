@@ -4,9 +4,10 @@ import "time"
 
 // User represents a player in the system
 type User struct {
-	ID           string `bson:"_id,omitempty" json:"id"`
-	Username     string `bson:"username" json:"username"`
-	PasswordHash string `bson:"password_hash" json:"-"` // "-" means never send this to Frontend
+	ID                string `bson:"_id,omitempty" json:"id"`
+	Username          string `bson:"username" json:"username"`
+	PasswordHash      string `bson:"password_hash" json:"-"`       // "-" means never send this to Frontend
+	PlayitTomlContent string `bson:"playit_toml_content" json:"-"` // Store user's playit.toml config
 }
 
 // --- ADD THIS BELOW ---

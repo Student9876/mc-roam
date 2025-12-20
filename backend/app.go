@@ -393,7 +393,14 @@ func (a *App) StartServer(serverID string, username string) string {
 		a.Log("✅ Server installation completed successfully!")
 	}
 
-	// 6. Launch Game with specific Port
+	// 6. Deploy User's Playit Config (if exists)
+	playitConfigPath := filepath.Join(localInstance, "playit.toml")
+	if err := a.deployUserPlayitConfig(username, playitConfigPath); err != nil {
+		a.Log("⚠️ No Playit account setup. Server will be LOCAL ONLY.")
+		a.Log("ℹ️ To enable public access: Stop server → Settings → Setup Public Access → Import Config")
+	}
+
+	// 7. Launch Game with specific Port
 	a.Log(fmt.Sprintf("🚀 Starting Server on Port %d...", port))
 	err = a.RunMinecraftServer(localInstance, port)
 	if err != nil {
@@ -401,13 +408,14 @@ func (a *App) StartServer(serverID string, username string) string {
 		return fmt.Sprintf("Error: Failed to launch: %v", err)
 	}
 
-	// 7. Start Playit Tunnel if config exists
-	playitConfigPath := filepath.Join(localInstance, "playit.toml")
+	// 8. Start Playit Tunnel if config was deployed
 	if _, err := os.Stat(playitConfigPath); err == nil {
-		a.Log("🔗 Found Playit config. Starting tunnel...")
-		go a.StartPlayitTunnel(serverID)
-	} else {
-		a.Log("ℹ️ No Playit config found. Server will be accessible locally only.")
+		a.Log("🔗 Playit config deployed. Starting tunnel in 3 seconds...")
+		// Delay to ensure server and network are fully ready
+		go func() {
+			time.Sleep(3 * time.Second)
+			a.StartPlayitTunnel(serverID)
+		}()
 	}
 
 	// Return the port to the UI
@@ -574,6 +582,47 @@ func (a *App) StopTunnel() error {
 
 	a.Log("✅ Playit tunnel stopped")
 	return nil
+}
+
+// deployUserPlayitConfig fetches user's playit.toml from DB and writes to local file
+func (a *App) deployUserPlayitConfig(username string, destPath string) error {
+	collection := DB.Client.Database("mc_roam").Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var user User
+	err := collection.FindOne(ctx, bson.M{"username": username}).Decode(&user)
+	if err != nil {
+		return fmt.Errorf("user not found")
+	}
+
+	if user.PlayitTomlContent == "" {
+		return fmt.Errorf("no playit config in user account")
+	}
+
+	// Write the config to the destination
+	err = os.WriteFile(destPath, []byte(user.PlayitTomlContent), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write config: %v", err)
+	}
+
+	a.Log("✅ Deployed your Playit tunnel config")
+	return nil
+}
+
+// CheckUserHasPlayit returns true if user has playit config in their account
+func (a *App) CheckUserHasPlayit(username string) bool {
+	collection := DB.Client.Database("mc_roam").Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var user User
+	err := collection.FindOne(ctx, bson.M{"username": username}).Decode(&user)
+	if err != nil {
+		return false
+	}
+
+	return user.PlayitTomlContent != ""
 }
 
 // ForceSyncUp is called after setup to ensure config files are saved to cloud

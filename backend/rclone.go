@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"syscall"
 	"time" // Add this import
 )
@@ -68,6 +67,7 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 		"--exclude", "libraries/**",
 		"--exclude", "versions/**",
 		"--exclude", "crash-reports/**",
+		"--exclude", "playit.toml", // NEVER sync - stored in user's DB instead
 		// --- FIX 2: Windows-specific flags to prevent hangs ---
 		"--no-traverse",        // Don't traverse the entire tree first
 		"--fast-list",          // Use recursive list if available
@@ -76,21 +76,6 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 		"--contimeout", "60s", // Connection timeout
 		// ------------------------------------------------------
 	}
-
-	// --- SMART FIX: Conditionally Protect playit.toml ---
-	if direction == SyncDown {
-		playitPath := filepath.Join(localPath, "playit.toml")
-		if _, err := os.Stat(playitPath); err == nil {
-			args = append(args,
-				"--exclude", "playit.toml",
-				"--filter", "- playit.toml",
-			)
-			a.Log("🔒 Protecting existing local playit.toml")
-		} else {
-			a.Log("📥 playit.toml not found locally, will download from cloud if available")
-		}
-	}
-	// ------------------------------------------------------
 
 	cmd := exec.Command(rcloneBin, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
