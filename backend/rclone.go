@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"syscall" // Required for hiding the window
+	"path/filepath"
+	"syscall"
+	"time" // Add this import
 )
 
 // SyncDirection defines if we are Pulling (Down) or Pushing (Up)
@@ -44,14 +46,21 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 	// 2. Trigger Sticky Footer Immediately (Transient Status)
 	a.Log(statusMsg)
 
-	// 3. The Command
+	// --- FIX 1: Ensure folder exists with proper delay ---
+	EnsureLocalFolder(localPath)
+
+	// Give Windows time to register the folder (especially on slower drives)
+	time.Sleep(500 * time.Millisecond)
+	a.Log(fmt.Sprintf("📁 Target folder ready: %s", localPath))
+	// -----------------------------------------------------
+
+	// 3. Build Base Command Args
 	args := []string{
 		"sync", source, dest,
 		"--progress",
-		"--stats", "1s",
+		"--stats", "2s", // Increased from 1s to reduce overhead
 		"--stats-one-line",
-		"--transfers", "8",
-		"--create-empty-src-dirs",
+		"--transfers", "4", // Reduced from 8 to prevent Windows handle exhaustion
 		"--config", getRcloneConfig(),
 		"--exclude", "session.lock",
 		"--exclude", "logs/**",
@@ -59,48 +68,76 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 		"--exclude", "libraries/**",
 		"--exclude", "versions/**",
 		"--exclude", "crash-reports/**",
+		// --- FIX 2: Windows-specific flags to prevent hangs ---
+		"--no-traverse",        // Don't traverse the entire tree first
+		"--fast-list",          // Use recursive list if available
+		"--buffer-size", "16M", // Reduce memory usage
+		"--timeout", "10m", // Add overall timeout
+		"--contimeout", "60s", // Connection timeout
+		// ------------------------------------------------------
 	}
+
+	// --- SMART FIX: Conditionally Protect playit.toml ---
+	if direction == SyncDown {
+		playitPath := filepath.Join(localPath, "playit.toml")
+		if _, err := os.Stat(playitPath); err == nil {
+			args = append(args,
+				"--exclude", "playit.toml",
+				"--filter", "- playit.toml",
+			)
+			a.Log("🔒 Protecting existing local playit.toml")
+		} else {
+			a.Log("📥 playit.toml not found locally, will download from cloud if available")
+		}
+	}
+	// ------------------------------------------------------
 
 	cmd := exec.Command(rcloneBin, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
+	// --- FIX 3: Use non-blocking pipes ---
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
-	cmd.Stderr = cmd.Stdout
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	// -------------------------------------
 
 	if err := cmd.Start(); err != nil {
 		return err
 	}
 
-	// Read output byte-by-byte to handle carriage returns
+	// --- FIX 4: Read both stdout and stderr concurrently ---
+	done := make(chan bool)
+
+	// Read stdout
 	go func() {
-		buf := make([]byte, 1)
+		buf := make([]byte, 1024) // Larger buffer for efficiency
 		line := ""
 		for {
 			n, err := stdout.Read(buf)
 			if n > 0 {
-				char := buf[0]
-				if char == '\r' {
-					// Carriage return - emit current line and reset
-					if line != "" {
-						a.Log("[Sync]: " + line)
-						line = ""
+				for i := 0; i < n; i++ {
+					char := buf[i]
+					if char == '\r' {
+						if line != "" {
+							a.Log("[Sync]: " + line)
+							line = ""
+						}
+					} else if char == '\n' {
+						if line != "" {
+							a.Log("[Sync]: " + line)
+							line = ""
+						}
+					} else {
+						line += string(char)
 					}
-				} else if char == '\n' {
-					// Newline - emit line and reset
-					if line != "" {
-						a.Log("[Sync]: " + line)
-						line = ""
-					}
-				} else {
-					// Regular character - append to line
-					line += string(char)
 				}
 			}
 			if err != nil {
-				// Emit any remaining content
 				if line != "" {
 					a.Log("[Sync]: " + line)
 				}
@@ -109,11 +146,51 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 		}
 	}()
 
+	// Read stderr separately
+	go func() {
+		buf := make([]byte, 1024)
+		line := ""
+		for {
+			n, err := stderr.Read(buf)
+			if n > 0 {
+				for i := 0; i < n; i++ {
+					char := buf[i]
+					if char == '\n' {
+						if line != "" {
+							a.Log("[Sync Error]: " + line)
+							line = ""
+						}
+					} else {
+						line += string(char)
+					}
+				}
+			}
+			if err != nil {
+				if line != "" {
+					a.Log("[Sync Error]: " + line)
+				}
+				break
+			}
+		}
+	}()
+
+	// --- FIX 5: Add timeout for the entire operation ---
+	go func() {
+		time.Sleep(15 * time.Minute) // Max 15 minutes for any sync
+		if cmd.Process != nil {
+			a.Log("⚠️ Sync timeout reached, killing process...")
+			cmd.Process.Kill()
+		}
+	}()
+	// ----------------------------------------------------
+
 	if err := cmd.Wait(); err != nil {
 		return fmt.Errorf("sync failed: %w", err)
 	}
 
-	// 3. Success Message
+	close(done)
+
+	// 6. Success Message
 	if direction == SyncDown {
 		a.Log("✅ Download Complete. Starting Server...")
 	} else {
