@@ -35,17 +35,10 @@ jobs:
         cd frontend
         npm install
 
-    - name: Setup environment variables
+    - name: Build application with embedded credentials
       run: |
-        echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> $GITHUB_ENV
-        echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> $GITHUB_ENV
+        wails build -ldflags "-X 'mc-roam/backend.MongoDBURI=${{ secrets.MONGODB_URI }}' -X 'mc-roam/backend.GoogleClientID=${{ secrets.GOOGLE_CLIENT_ID }}' -X 'mc-roam/backend.GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}'"
       shell: bash
-
-    - name: Build application
-      env:
-        GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-        GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-      run: wails build
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4

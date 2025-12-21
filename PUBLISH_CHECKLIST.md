@@ -55,8 +55,11 @@ git push origin main
 Before building, add secrets to repository:
 - Go to Settings → Secrets and variables → Actions
 - Add these secrets:
+  - `MONGODB_URI`: Your MongoDB connection string
   - `GOOGLE_CLIENT_ID`: Your Google OAuth client ID
   - `GOOGLE_CLIENT_SECRET`: Your Google OAuth client secret
+
+**These will be embedded in the .exe during build - users won't need to configure anything!**
 
 ### 3. Push to GitHub
 ```bash

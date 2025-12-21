@@ -17,6 +17,14 @@ import (
 	"golang.org/x/crypto/bcrypt"        // Add this
 )
 
+// Build-time variables (set via -ldflags during compilation)
+// These will be injected by GitHub Actions from repository secrets
+var (
+	MongoDBURI         string
+	GoogleClientID     string
+	GoogleClientSecret string
+)
+
 // App struct
 type App struct {
 	ctx context.Context
@@ -68,12 +76,14 @@ func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 
 	// --- DATABASE CONNECTION TEST ---
-	// Production: Use hardcoded MongoDB URI provided by app owner
-	// Development: Can be overridden with MONGODB_URI environment variable
+	// Use build-time injected credentials or environment override
 	connStr := os.Getenv("MONGODB_URI")
 	if connStr == "" {
-		// Production MongoDB - Users don't need to configure this
-		connStr = "mongodb+srv://shouvik9876:9674350711%40@cluster0.j3d6lug.mongodb.net/"
+		connStr = MongoDBURI // Injected at build time via ldflags
+	}
+	if connStr == "" {
+		// Fallback for development without build flags
+		connStr = "mongodb://localhost:27017"
 	}
 
 	_, err := ConnectDB(connStr)
@@ -500,18 +510,18 @@ func (a *App) StopServer(serverID string, username string) string {
 func (a *App) AuthorizeDrive(clientID string, clientSecret string) string {
 	rcloneBin := getToolPath("rclone.exe")
 
-	// 1. Use build-time environment variables or fallback to hardcoded
-	// (Credentials are provided by app owner, users don't need to configure)
+	// 1. Use build-time injected credentials or environment override
+	// (Credentials are provided by app owner via build process)
 	if clientID == "" {
 		clientID = os.Getenv("GOOGLE_CLIENT_ID")
 		if clientID == "" {
-			clientID = "591449617847-e8dutllhdbipah552jtfn0snm03qdkr3.apps.googleusercontent.com"
+			clientID = GoogleClientID // Injected at build time via ldflags
 		}
 	}
 	if clientSecret == "" {
 		clientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
 		if clientSecret == "" {
-			clientSecret = "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"
+			clientSecret = GoogleClientSecret // Injected at build time via ldflags
 		}
 	}
 
