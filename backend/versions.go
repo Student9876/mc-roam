@@ -40,14 +40,54 @@ func (a *App) SeedVersions() {
 
 	a.Log("🌱 Seeding Database with Multi-Type Versions...")
 
+	// initialVersions := []interface{}{
+	// 	// --- PAPER (Optimized, Plugins) ---
+	// 	ServerVersion{Type: "Paper", Version: "1.20.4", Url: "https://api.papermc.io/v2/projects/paper/versions/1.20.4/builds/496/downloads/paper-1.20.4-496.jar"},
+	// 	ServerVersion{Type: "Paper", Version: "1.20.2", Url: "https://api.papermc.io/v2/projects/paper/versions/1.20.2/builds/318/downloads/paper-1.20.2-318.jar"},
+	// 	ServerVersion{Type: "Paper", Version: "1.19.4", Url: "https://api.papermc.io/v2/projects/paper/versions/1.19.4/builds/550/downloads/paper-1.19.4-550.jar"},
+
+	// 	// --- VANILLA (Standard Mojang) ---
+	// 	// Real URLs from piston-meta.mojang.com
+	// 	ServerVersion{Type: "Vanilla", Version: "1.20.4", Url: "https://piston-data.mojang.com/v1/objects/8dd1a28015f51b1803213892b50b7b4fc76e594d/server.jar"},
+	// 	ServerVersion{Type: "Vanilla", Version: "1.20.2", Url: "https://piston-data.mojang.com/v1/objects/5b868151bd02b41319f54c8d4061b8cae84e665c/server.jar"},
+	// 	ServerVersion{Type: "Vanilla", Version: "1.16.5", Url: "https://launcher.mojang.com/v1/objects/1b557e7b033b583cd9f66746b7a9ab1ec1673ced/server.jar"},
+	// }
+
+	// NEW EXPANDED LIST (Old & Latest)
 	initialVersions := []interface{}{
+		// --- PAPER (Optimized) ---
+		// Latest Stable (1.21.x) - Check API for specific build updates
+		ServerVersion{Type: "Paper", Version: "1.21", Url: "https://api.papermc.io/v2/projects/paper/versions/1.21/builds/130/downloads/paper-1.21-130.jar"},
+		// Recent Stable
+		ServerVersion{Type: "Paper", Version: "1.20.4", Url: "https://api.papermc.io/v2/projects/paper/versions/1.20.4/builds/496/downloads/paper-1.20.4-496.jar"},
+		// Modern Classic (1.19)
+		ServerVersion{Type: "Paper", Version: "1.19.4", Url: "https://api.papermc.io/v2/projects/paper/versions/1.19.4/builds/550/downloads/paper-1.19.4-550.jar"},
+		// The "Combat Update" Classic (1.16.5)
+		ServerVersion{Type: "Paper", Version: "1.16.5", Url: "https://api.papermc.io/v2/projects/paper/versions/1.16.5/builds/794/downloads/paper-1.16.5-794.jar"},
+		// The "Modding" Classic (1.12.2)
+		ServerVersion{Type: "Paper", Version: "1.12.2", Url: "https://api.papermc.io/v2/projects/paper/versions/1.12.2/builds/1618/downloads/paper-1.12.2-1618.jar"},
+		// The "PVP" Classic (1.8.8)
+		ServerVersion{Type: "Paper", Version: "1.8.8", Url: "https://api.papermc.io/v2/projects/paper/versions/1.8.8/builds/443/downloads/paper-1.8.8-443.jar"},
+
+		// --- VANILLA (Standard Mojang) ---
+		// Latest (1.21.1)
+		ServerVersion{Type: "Vanilla", Version: "1.21.1", Url: "https://piston-data.mojang.com/v1/objects/59353fb40c36d304f2035d51e7d6e6baa98dc05c/server.jar"},
+		// Recent (1.20.4)
+		ServerVersion{Type: "Vanilla", Version: "1.20.4", Url: "https://piston-data.mojang.com/v1/objects/8dd1a28015f51b1803213892b50b7b4fc76e594d/server.jar"},
+		// Classic (1.16.5)
+		ServerVersion{Type: "Vanilla", Version: "1.16.5", Url: "https://launcher.mojang.com/v1/objects/1b557e7b033b583cd9f66746b7a9ab1ec1673ced/server.jar"},
+		// Legacy (1.12.2)
+		ServerVersion{Type: "Vanilla", Version: "1.12.2", Url: "https://piston-data.mojang.com/v1/objects/886945eccb5b5603c94c54a5203a1868f3765a9d/server.jar"},
+		// Ancient (1.8.8)
+		ServerVersion{Type: "Vanilla", Version: "1.8.8", Url: "https://piston-data.mojang.com/v1/objects/5fafba3f58c4270729908e28175320d7ee3a854c/server.jar"},
+
 		// --- PAPER (Optimized, Plugins) ---
 		ServerVersion{Type: "Paper", Version: "1.20.4", Url: "https://api.papermc.io/v2/projects/paper/versions/1.20.4/builds/496/downloads/paper-1.20.4-496.jar"},
 		ServerVersion{Type: "Paper", Version: "1.20.2", Url: "https://api.papermc.io/v2/projects/paper/versions/1.20.2/builds/318/downloads/paper-1.20.2-318.jar"},
 		ServerVersion{Type: "Paper", Version: "1.19.4", Url: "https://api.papermc.io/v2/projects/paper/versions/1.19.4/builds/550/downloads/paper-1.19.4-550.jar"},
 
-		// --- VANILLA (Standard Mojang) ---
-		// Real URLs from piston-meta.mojang.com
+		// 	// --- VANILLA (Standard Mojang) ---
+		// 	// Real URLs from piston-meta.mojang.com
 		ServerVersion{Type: "Vanilla", Version: "1.20.4", Url: "https://piston-data.mojang.com/v1/objects/8dd1a28015f51b1803213892b50b7b4fc76e594d/server.jar"},
 		ServerVersion{Type: "Vanilla", Version: "1.20.2", Url: "https://piston-data.mojang.com/v1/objects/5b868151bd02b41319f54c8d4061b8cae84e665c/server.jar"},
 		ServerVersion{Type: "Vanilla", Version: "1.16.5", Url: "https://launcher.mojang.com/v1/objects/1b557e7b033b583cd9f66746b7a9ab1ec1673ced/server.jar"},
