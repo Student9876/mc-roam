@@ -1,6 +1,33 @@
+﻿# Build outputs
 build/bin
+build/windows/*.syso
+
+# Dependencies
 node_modules
 frontend/dist
+
+# Runtime data
 minecraft_server
 rclone.conf
 instances/*
+
+# Environment variables
+.env
+.env.local
+*.local
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# MongoDB
+mc_roam_data/

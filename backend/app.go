@@ -68,8 +68,13 @@ func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 
 	// --- DATABASE CONNECTION TEST ---
-	// TODO: Replace this string with your actual MongoDB Connection String
-	connStr := "mongodb+srv://shouvik9876:9674350711%40@cluster0.j3d6lug.mongodb.net/"
+	// Production: Use hardcoded MongoDB URI provided by app owner
+	// Development: Can be overridden with MONGODB_URI environment variable
+	connStr := os.Getenv("MONGODB_URI")
+	if connStr == "" {
+		// Production MongoDB - Users don't need to configure this
+		connStr = "mongodb+srv://shouvik9876:9674350711%40@cluster0.j3d6lug.mongodb.net/"
+	}
 
 	_, err := ConnectDB(connStr)
 	if err != nil {
@@ -495,13 +500,19 @@ func (a *App) StopServer(serverID string, username string) string {
 func (a *App) AuthorizeDrive(clientID string, clientSecret string) string {
 	rcloneBin := getToolPath("rclone.exe")
 
-	// 1. Use default keys if user didn't provide custom ones
-	// (You can hardcode your keys here so friends don't need to type them!)
+	// 1. Use build-time environment variables or fallback to hardcoded
+	// (Credentials are provided by app owner, users don't need to configure)
 	if clientID == "" {
-		clientID = "591449617847-e8dutllhdbipah552jtfn0snm03qdkr3.apps.googleusercontent.com"
+		clientID = os.Getenv("GOOGLE_CLIENT_ID")
+		if clientID == "" {
+			clientID = "591449617847-e8dutllhdbipah552jtfn0snm03qdkr3.apps.googleusercontent.com"
+		}
 	}
 	if clientSecret == "" {
-		clientSecret = "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"
+		clientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
+		if clientSecret == "" {
+			clientSecret = "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"
+		}
 	}
 
 	// 2. Run: rclone authorize "drive" "id" "secret"
