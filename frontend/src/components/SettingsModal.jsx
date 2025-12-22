@@ -1,30 +1,57 @@
 import { useState, useEffect } from 'react';
-import { GetServerOptions, SaveServerOptions } from '../../wailsjs/go/backend/App';
+import { GetServerOptions, SaveServerOptions, GetVersions } from '../../wailsjs/go/backend/App';
 import './SettingsModal.css';
 
 export default function SettingsModal({ serverId, currentUser, onClose }) {
     const [props, setProps] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [availableVersions, setAvailableVersions] = useState([]);
+    const [selectedType, setSelectedType] = useState('');
+    const [selectedVersion, setSelectedVersion] = useState('');
+
 
     useEffect(() => {
         loadSettings();
+        loadVersions();
     }, []);
+
 
     const loadSettings = async () => {
         const data = await GetServerOptions(serverId);
         setProps(data);
+        setSelectedType(data?.type || '');
+        setSelectedVersion(data?.version || '');
         setIsLoading(false);
     };
 
+    const loadVersions = async () => {
+        const versions = await GetVersions();
+        setAvailableVersions(versions);
+    };
+
+
     const handleSave = async () => {
-        const result = await SaveServerOptions(serverId, currentUser, props);
+        // Save version selection in props for now (backend update in next step)
+        const updatedProps = { ...props, version: selectedVersion, type: selectedType };
+        const result = await SaveServerOptions(serverId, currentUser, updatedProps);
         alert(result);
         onClose();
     };
 
+
     const handleChange = (key, value) => {
         setProps(prev => ({ ...prev, [key]: value }));
     };
+
+    const handleTypeChange = (e) => {
+        setSelectedType(e.target.value);
+        setSelectedVersion(''); // Reset version when type changes
+    };
+
+    const handleVersionChange = (e) => {
+        setSelectedVersion(e.target.value);
+    };
+
 
     if (isLoading) return <div style={styles.modalOverlay}>Loading Settings...</div>;
 
@@ -38,6 +65,39 @@ export default function SettingsModal({ serverId, currentUser, onClose }) {
 
                 <div style={styles.scrollArea} className="settings-scroll">
                     <div style={styles.grid}>
+                    {/* Version Change Section */}
+                    <div style={styles.section}>
+                        <h4>Change Server Version</h4>
+                        <label style={styles.label}>Type</label>
+                        <div style={styles.inputWrapper}>
+                            <select
+                                value={selectedType || ''}
+                                onChange={handleTypeChange}
+                                style={styles.input}
+                            >
+                                <option value="" disabled>Select type...</option>
+                                {[...new Set(availableVersions.map(v => v.type))].map(type => (
+                                    <option key={type} value={type}>{type}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <label style={styles.label}>Version</label>
+                        <div style={styles.inputWrapper}>
+                            <select
+                                value={selectedVersion || ''}
+                                onChange={handleVersionChange}
+                                style={styles.input}
+                                disabled={!selectedType}
+                            >
+                                <option value="" disabled>Select version...</option>
+                                {availableVersions.filter(v => v.type === selectedType).map((v) => (
+                                    <option key={v.id} value={v.version}>
+                                        {v.version}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
                     {/* General Settings */}
                     <div style={styles.section}>
                         <h4>General</h4>
