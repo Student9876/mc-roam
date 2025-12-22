@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time" // Add this import
 )
@@ -109,12 +110,16 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 					char := buf[i]
 					if char == '\r' {
 						if line != "" {
-							a.Log("[Sync]: " + line)
+							if !shouldSuppressSyncLog(line) {
+								a.Log("[Sync]: " + line)
+							}
 							line = ""
 						}
 					} else if char == '\n' {
 						if line != "" {
-							a.Log("[Sync]: " + line)
+							if !shouldSuppressSyncLog(line) {
+								a.Log("[Sync]: " + line)
+							}
 							line = ""
 						}
 					} else {
@@ -124,7 +129,9 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 			}
 			if err != nil {
 				if line != "" {
-					a.Log("[Sync]: " + line)
+					if !shouldSuppressSyncLog(line) {
+						a.Log("[Sync]: " + line)
+					}
 				}
 				break
 			}
@@ -161,7 +168,7 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 
 	// --- FIX 5: Add timeout for the entire operation ---
 	go func() {
-		time.Sleep(15 * time.Minute) // Max 15 minutes for any sync
+		time.Sleep(1 * time.Hour) // Increased timeout to 1 hour
 		if cmd.Process != nil {
 			a.Log("⚠️ Sync timeout reached, killing process...")
 			cmd.Process.Kill()
@@ -208,4 +215,13 @@ func (a *App) PurgeRemote(remotePath string) error {
 
 	// We don't need to stream logs for this, just run it
 	return cmd.Run()
+}
+
+// Helper to filter out misleading rclone log lines
+func shouldSuppressSyncLog(line string) bool {
+	// Suppress --no-traverse warning and similar non-critical lines
+	if strings.Contains(line, "Ignoring --no-traverse with sync") {
+		return true
+	}
+	return false
 }

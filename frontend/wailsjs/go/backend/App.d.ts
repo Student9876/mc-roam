@@ -4,9 +4,9 @@ import {backend} from '../models';
 
 export function AuthorizeDrive(arg1:string,arg2:string):Promise<string>;
 
-export function ChangeServerVersion(arg1:string,arg2:string,arg3:string):Promise<string>;
+export function ChangeServerVersion(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
 
-export function ChangeServerVersionWails(arg1:string,arg2:string,arg3:string):Promise<string>;
+export function ChangeServerVersionWails(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
 
 export function CheckCloudExists(arg1:string):Promise<boolean>;
 

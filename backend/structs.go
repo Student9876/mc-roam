@@ -38,6 +38,11 @@ type ServerGroup struct {
 	RcloneConfig  string                 `bson:"rclone_config" json:"-"`
 	WorldSettings map[string]interface{} `bson:"world_settings" json:"world_settings"` // Stores { "keepInventory": true, "difficulty": "hard" }
 	Lock          ServerLock             `bson:"lock" json:"lock"`
+
+	// --- SYNC STATE TRACKING ---
+	LastSyncStatus string    `bson:"last_sync_status" json:"last_sync_status"` // "ok", "error", etc.
+	LastSyncUser   string    `bson:"last_sync_user" json:"last_sync_user"`
+	LastSyncTime   time.Time `bson:"last_sync_time" json:"last_sync_time"`
 }
 
 type ServerLock struct {

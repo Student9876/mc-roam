@@ -483,11 +483,26 @@ func (a *App) StopServer(serverID string, username string) string {
 		a.Log("🚀 Starting Upload (Sync Up)...")
 
 		// Syncing: ./instances/123 -> server-123 (Cloud)
-		err = a.RunSync(SyncUp, remoteFolder, localInstance)
-		if err != nil {
-			return fmt.Sprintf("Error: Upload failed! Data NOT saved. (%v)", err)
+		syncErr := a.RunSync(SyncUp, remoteFolder, localInstance)
+		status := "ok"
+		if syncErr != nil {
+			status = "error"
+			a.Log("❌ Upload failed! Data NOT saved. (" + syncErr.Error() + ")")
+		} else {
+			a.Log("✅ Upload Complete!")
 		}
-		a.Log("✅ Upload Complete!")
+		// Update sync state in DB
+		updateSync := bson.M{
+			"$set": bson.M{
+				"last_sync_status": status,
+				"last_sync_user":   username,
+				"last_sync_time":   time.Now(),
+			},
+		}
+		_, _ = collection.UpdateOne(ctx, bson.M{"_id": serverID}, updateSync)
+		if syncErr != nil {
+			return fmt.Sprintf("Error: Upload failed! Data NOT saved. (%v)", syncErr)
+		}
 	}
 
 	// 4. Release Lock
@@ -675,9 +690,22 @@ func (a *App) ForceSyncUp(serverID string) string {
 	remotePath := "server-" + serverID
 
 	a.Log("☁️ Uploading Initial Configuration...")
-	err = a.RunSync(SyncUp, remotePath, localPath)
-	if err != nil {
-		return "Error syncing: " + err.Error()
+	syncErr := a.RunSync(SyncUp, remotePath, localPath)
+	status := "ok"
+	if syncErr != nil {
+		status = "error"
+	}
+	// Update sync state in DB
+	updateSync := bson.M{
+		"$set": bson.M{
+			"last_sync_status": status,
+			"last_sync_user":   "force-sync",
+			"last_sync_time":   time.Now(),
+		},
+	}
+	_, _ = collection.UpdateOne(ctx, bson.M{"_id": serverID}, updateSync)
+	if syncErr != nil {
+		return "Error syncing: " + syncErr.Error()
 	}
 	return "Success"
 }
@@ -886,12 +914,12 @@ func (a *App) GetAdmins(serverID string) []string {
 
 // Wails method: ChangeServerVersion
 // Expose to frontend
-func (a *App) ChangeServerVersionWails(serverID string, newType string, newVersion string) string {
-	return a.ChangeServerVersion(serverID, newType, newVersion)
+func (a *App) ChangeServerVersionWails(serverID string, newType string, newVersion string, username string) string {
+	return a.ChangeServerVersion(serverID, newType, newVersion, username)
 }
 
 // ChangeServerVersion changes the server type and version, preserving world/config files
-func (a *App) ChangeServerVersion(serverID string, newType string, newVersion string) string {
+func (a *App) ChangeServerVersion(serverID string, newType string, newVersion string, username string) string {
 	// 0. Check if server is running (locked)
 	serversColl := DB.Client.Database("mc_roam").Collection("servers")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
@@ -959,9 +987,22 @@ func (a *App) ChangeServerVersion(serverID string, newType string, newVersion st
 
 	// 5. Sync up to save changes in cloud
 	a.Log("☁️ Syncing up after version change...")
-	err = a.RunSync(SyncUp, remoteFolder, instancePath)
-	if err != nil {
-		return "Error: Sync up failed: " + err.Error()
+	syncErr := a.RunSync(SyncUp, remoteFolder, instancePath)
+	status := "ok"
+	if syncErr != nil {
+		status = "error"
+	}
+	// Update sync state in DB
+	updateSync := bson.M{
+		"$set": bson.M{
+			"last_sync_status": status,
+			"last_sync_user":   username,
+			"last_sync_time":   time.Now(),
+		},
+	}
+	_, _ = serversColl.UpdateOne(ctx, bson.M{"_id": serverID}, updateSync)
+	if syncErr != nil {
+		return "Error: Sync up failed: " + syncErr.Error()
 	}
 
 	a.Log("✅ Server version changed: " + newType + " " + newVersion)

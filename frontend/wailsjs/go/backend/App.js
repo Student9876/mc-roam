@@ -6,12 +6,12 @@ export function AuthorizeDrive(arg1, arg2) {
   return window['go']['backend']['App']['AuthorizeDrive'](arg1, arg2);
 }
 
-export function ChangeServerVersion(arg1, arg2, arg3) {
-  return window['go']['backend']['App']['ChangeServerVersion'](arg1, arg2, arg3);
+export function ChangeServerVersion(arg1, arg2, arg3, arg4) {
+  return window['go']['backend']['App']['ChangeServerVersion'](arg1, arg2, arg3, arg4);
 }
 
-export function ChangeServerVersionWails(arg1, arg2, arg3) {
-  return window['go']['backend']['App']['ChangeServerVersionWails'](arg1, arg2, arg3);
+export function ChangeServerVersionWails(arg1, arg2, arg3, arg4) {
+  return window['go']['backend']['App']['ChangeServerVersionWails'](arg1, arg2, arg3, arg4);
 }
 
 export function CheckCloudExists(arg1) {

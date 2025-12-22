@@ -1,4 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+// Minimal circular refresh icon (Material style)
+const RefreshIcon = ({ spinning, color = '#888' }) => (
+    <svg
+        width="20" height="20" viewBox="0 0 20 20"
+        style={{
+            display: 'block',
+            transition: 'transform 0.5s',
+            transform: spinning ? 'rotate(360deg)' : 'none',
+        }}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+    >
+        <path d="M4 4v4h4" />
+        <path d="M2.05 11a8 8 0 1 0 2-7.75L4 8" />
+    </svg>
+);
 import { useNavigate } from 'react-router-dom';
 // Backend
 import { GetMyServers, CreateServer, JoinServer, StartServer, StopServer, AuthorizeDrive, InstallServer, DeleteServer, GetVersions, LaunchPlayitExternally, ImportPlayitConfig, ForceSyncUp, CheckDependencies, InstallDependencies } from '../../wailsjs/go/backend/App';
@@ -18,6 +37,21 @@ export default function Dashboard() {
     const [systemLogs, setSystemLogs] = useState([]);
 
     const [servers, setServers] = useState([]);
+    const [refreshCooldown, setRefreshCooldown] = useState(false);
+    const refreshTimeoutRef = useRef(null);
+    // Cleanup cooldown timer on unmount
+    useEffect(() => {
+        return () => {
+            if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+        };
+    }, []);
+
+    const handleRefresh = () => {
+        if (refreshCooldown) return;
+        loadServers();
+        setRefreshCooldown(true);
+        refreshTimeoutRef.current = setTimeout(() => setRefreshCooldown(false), 2000);
+    };
 
     // Version selection state
     const [allVersions, setAllVersions] = useState([]); // Raw data from DB
@@ -329,13 +363,36 @@ export default function Dashboard() {
                 {/* DYNAMIC VIEWS */}
                 {view === "dashboard" && (
                     <div>
-                        <h1 style={styles.pageTitle}>My Servers</h1>
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', justifyContent: 'space-between' }}>
+                            <h1 style={{ ...styles.pageTitle, marginBottom: 0 }}>My Servers</h1>
+                            <button
+                                onClick={handleRefresh}
+                                disabled={refreshCooldown}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    marginLeft: 10,
+                                    cursor: refreshCooldown ? 'not-allowed' : 'pointer',
+                                    outline: 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    opacity: refreshCooldown ? 0.5 : 1,
+                                    transition: 'opacity 0.2s',
+                                    height: 22,
+                                    width: 22,
+                                }}
+                                title={refreshCooldown ? 'Please wait before refreshing again' : 'Refresh server list'}
+                                onMouseOver={e => e.currentTarget.firstChild.style.stroke = '#fab005'}
+                                onMouseOut={e => e.currentTarget.firstChild.style.stroke = '#888'}
+                            >
+                                <RefreshIcon spinning={refreshCooldown} color="#888" />
+                            </button>
+                        </div>
                         <div style={styles.grid}>
                             {servers.map(server => (
-                                // Inside Dashboard.jsx -> servers.map loop
                                 <ServerCard
                                     key={server.id}
-                                    // Merge the global public address into the server object if this is the running server
                                     server={{
                                         ...server,
                                         public_address: (server.lock.is_running && activePort) ? publicAddress : null,

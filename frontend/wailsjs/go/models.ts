@@ -111,6 +111,10 @@ export namespace backend {
 	    admins: string[];
 	    world_settings: Record<string, any>;
 	    lock: ServerLock;
+	    last_sync_status: string;
+	    last_sync_user: string;
+	    // Go type: time
+	    last_sync_time: any;
 	
 	    static createFrom(source: any = {}) {
 	        return new ServerGroup(source);
@@ -129,6 +133,9 @@ export namespace backend {
 	        this.admins = source["admins"];
 	        this.world_settings = source["world_settings"];
 	        this.lock = this.convertValues(source["lock"], ServerLock);
+	        this.last_sync_status = source["last_sync_status"];
+	        this.last_sync_user = source["last_sync_user"];
+	        this.last_sync_time = this.convertValues(source["last_sync_time"], null);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
