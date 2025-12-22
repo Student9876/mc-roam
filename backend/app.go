@@ -102,103 +102,99 @@ func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's showtime!", name)
 }
 
-// --- AUTHENTICATION METHODS ---
-
-// Register and Login methods moved to auth.go for modularization.
-
 // --- SERVER MANAGEMENT METHODS ---
 
 // CreateServer creates a new server group (UPDATED)
-func (a *App) CreateServer(serverName string, serverType string, version string, ownerUsername string, configString string) string {
-	collection := DB.Client.Database("mc_roam").Collection("servers")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+// func (a *App) CreateServer(serverName string, serverType string, version string, ownerUsername string, configString string) string {
+// 	collection := DB.Client.Database("mc_roam").Collection("servers")
+// 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+// 	defer cancel()
 
-	newID := fmt.Sprintf("srv_%d", time.Now().UnixNano())
+// 	newID := fmt.Sprintf("srv_%d", time.Now().UnixNano())
 
-	newServer := ServerGroup{
-		ID:           newID,
-		Name:         serverName,
-		Type:         serverType, // <--- SAVE TYPE (e.g., "Paper", "Vanilla")
-		Version:      version,    // <--- SAVE VERSION (e.g., "1.20.4")
-		OwnerID:      ownerUsername,
-		Members:      []string{ownerUsername},
-		InviteCode:   generateInviteCode(),
-		RcloneConfig: configString, // <--- SAVE THE KEYS
-		Lock: ServerLock{
-			IsRunning: false,
-		},
-	}
+// 	newServer := ServerGroup{
+// 		ID:           newID,
+// 		Name:         serverName,
+// 		Type:         serverType, // <--- SAVE TYPE (e.g., "Paper", "Vanilla")
+// 		Version:      version,    // <--- SAVE VERSION (e.g., "1.20.4")
+// 		OwnerID:      ownerUsername,
+// 		Members:      []string{ownerUsername},
+// 		InviteCode:   generateInviteCode(),
+// 		RcloneConfig: configString, // <--- SAVE THE KEYS
+// 		Lock: ServerLock{
+// 			IsRunning: false,
+// 		},
+// 	}
 
-	_, err := collection.InsertOne(ctx, newServer)
-	if err != nil {
-		return fmt.Sprintf("Error: Failed to create server: %v", err)
-	}
-	return newID // Return the server ID for frontend to use
-}
+// 	_, err := collection.InsertOne(ctx, newServer)
+// 	if err != nil {
+// 		return fmt.Sprintf("Error: Failed to create server: %v", err)
+// 	}
+// 	return newID // Return the server ID for frontend to use
+// }
 
-// GetMyServers returns a list of servers the user belongs to
-func (a *App) GetMyServers(username string) []ServerGroup {
-	collection := DB.Client.Database("mc_roam").Collection("servers")
+// // GetMyServers returns a list of servers the user belongs to
+// func (a *App) GetMyServers(username string) []ServerGroup {
+// 	collection := DB.Client.Database("mc_roam").Collection("servers")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+// 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+// 	defer cancel()
 
-	// Find servers where 'members' array contains 'username'
-	filter := bson.M{"members": username}
-	cursor, err := collection.Find(ctx, filter)
-	if err != nil {
-		return []ServerGroup{}
-	}
+// 	// Find servers where 'members' array contains 'username'
+// 	filter := bson.M{"members": username}
+// 	cursor, err := collection.Find(ctx, filter)
+// 	if err != nil {
+// 		return []ServerGroup{}
+// 	}
 
-	var servers []ServerGroup
-	if err = cursor.All(ctx, &servers); err != nil {
-		return []ServerGroup{}
-	}
+// 	var servers []ServerGroup
+// 	if err = cursor.All(ctx, &servers); err != nil {
+// 		return []ServerGroup{}
+// 	}
 
-	// Map owner_id to owner for frontend compatibility
-	for i := range servers {
-		servers[i].Owner = servers[i].OwnerID
-	}
+// 	// Map owner_id to owner for frontend compatibility
+// 	for i := range servers {
+// 		servers[i].Owner = servers[i].OwnerID
+// 	}
 
-	return servers
-}
+// 	return servers
+// }
 
-// Helper to generate a random code (e.g., "AB12")
-func generateInviteCode() string {
-	// Simple timestamp-based unique string for now
-	return fmt.Sprintf("%d", time.Now().UnixNano())[10:]
-}
+// // Helper to generate a random code (e.g., "AB12")
+// func generateInviteCode() string {
+// 	// Simple timestamp-based unique string for now
+// 	return fmt.Sprintf("%d", time.Now().UnixNano())[10:]
+// }
 
-// JoinServer adds the user to a server using an invite code
-func (a *App) JoinServer(inviteCode string, username string) string {
-	collection := DB.Client.Database("mc_roam").Collection("servers")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+// // JoinServer adds the user to a server using an invite code
+// func (a *App) JoinServer(inviteCode string, username string) string {
+// 	collection := DB.Client.Database("mc_roam").Collection("servers")
+// 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+// 	defer cancel()
 
-	// 1. Find the server with this code
-	var server ServerGroup
-	err := collection.FindOne(ctx, bson.M{"invite_code": inviteCode}).Decode(&server)
-	if err != nil {
-		return "Error: Invalid invite code"
-	}
+// 	// 1. Find the server with this code
+// 	var server ServerGroup
+// 	err := collection.FindOne(ctx, bson.M{"invite_code": inviteCode}).Decode(&server)
+// 	if err != nil {
+// 		return "Error: Invalid invite code"
+// 	}
 
-	// 2. Check if user is already a member
-	for _, member := range server.Members {
-		if member == username {
-			return "Error: You are already in this server"
-		}
-	}
+// 	// 2. Check if user is already a member
+// 	for _, member := range server.Members {
+// 		if member == username {
+// 			return "Error: You are already in this server"
+// 		}
+// 	}
 
-	// 3. Add user to the members list
-	update := bson.M{"$push": bson.M{"members": username}}
-	_, err = collection.UpdateOne(ctx, bson.M{"_id": server.ID}, update)
-	if err != nil {
-		return "Error: Failed to join server"
-	}
+// 	// 3. Add user to the members list
+// 	update := bson.M{"$push": bson.M{"members": username}}
+// 	_, err = collection.UpdateOne(ctx, bson.M{"_id": server.ID}, update)
+// 	if err != nil {
+// 		return "Error: Failed to join server"
+// 	}
 
-	return "Success: Joined " + server.Name
-}
+// 	return "Success: Joined " + server.Name
+// }
 
 // --- POWER MANAGEMENT METHODS ---
 
