@@ -79,7 +79,8 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
             fontWeight: '700',
             color: '#fff',
             margin: '0 0 4px 0',
-            wordBreak: 'break-word'
+            wordBreak: 'break-word',
+            textAlign: 'left'
         },
         ownerTag: {
             fontSize: '0.65rem',

@@ -588,18 +588,15 @@ export default function Dashboard() {
             )}
 
             {needsSetup && (
-                <div style={styles.modalOverlay}>
-                    <div style={styles.modalContent}>
-                        <h2>New Server Detected</h2>
-                        {/* Always lookup server live by _id */}
+                <div style={{ ...styles.modalOverlay }}>
+                    <div style={{ ...styles.modalContent, textAlign: "left", paddingLeft: "32px", paddingRight: "32px" }}>
+                        <h2 style={{ textAlign: "left" }}>New Server Detected</h2>
                         {(() => {
-                            console.log('setupServerId:', setupServerId);
-                            console.log('servers:', servers.map(s => s._id));
                             const server = servers.find(s => String(s.id) === String(setupServerId));
                             return (
                                 <>
                                     <div style={{ marginBottom: '10px', color: '#4ade80', fontWeight: 600 }}>
-                                        {server?.type || 'Minecraft'} {server?.version || '?'}
+                                        {(server?.type || 'Minecraft') + ' ' + (server?.version || '?')}
                                     </div>
                                     <div style={{ marginBottom: '10px', color: '#e0e0e0' }}>
                                         <b>Name:</b> {server?.name || 'Unknown'}<br/>
@@ -609,7 +606,11 @@ export default function Dashboard() {
                                 </>
                             );
                         })()}
-                        <p>Install this Minecraft Server?</p>
+
+                        <p style={{ color: "#ddd", fontSize: "0.9rem", lineHeight: "1.4" }}>
+                            This server is not fully set up yet. Please install the necessary files to get started.
+                        </p>
+
                         <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
                             <button onClick={() => setNeedsSetup(false)} style={styles.secondaryBtn}>Cancel</button>
                             <button onClick={handleInstall} disabled={isInstalling} style={styles.primaryBtn}>
@@ -623,42 +624,175 @@ export default function Dashboard() {
     );
 }
 
-// Styles
 const styles = {
-    container: { display: "flex", height: "100vh", width: "100vw", background: "#121212", color: "#e0e0e0", fontFamily: "'Inter', sans-serif", minWidth: "900px", overflow: "hidden", position: "relative" },
-    sidebar: { width: "180px", minWidth: "180px", flexShrink: 0, background: "#1a1a1a", padding: "1.5rem 1rem", display: "flex", flexDirection: "column", borderRight: "1px solid #333", overflow: "hidden" },
-    content: { flex: 1, padding: "1.5rem", overflowY: "auto", overflowX: "hidden", paddingBottom: "180px", width: "calc(100vw - 180px)", boxSizing: "border-box" },
-    nav: { display: "flex", flexDirection: "column", gap: "8px" },
-    navBtn: { background: "transparent", border: "none", color: "#888", padding: "8px", textAlign: "left", cursor: "pointer", fontSize: "0.9rem", borderRadius: "6px" },
-    navBtnActive: { background: "#333", border: "none", color: "#fff", padding: "8px", textAlign: "left", cursor: "pointer", fontSize: "0.9rem", borderRadius: "6px", fontWeight: "bold" },
-    userSection: { borderBottom: "1px solid #333", paddingBottom: "12px", marginBottom: "12px" },
-    logoutBtn: { background: "#c92a2a", color: "white", border: "none", padding: "8px", borderRadius: "6px", cursor: "pointer", fontSize: "0.85rem", width: "100%", marginTop: "8px" },
-
-    // Components
-    pageTitle: { fontSize: "1.5rem", marginBottom: "1.5rem", borderBottom: "1px solid #333", paddingBottom: "10px" },
+    container: {
+        display: "flex",
+        height: "100vh",
+        background: "#121212",
+        color: "#e0e0e0",
+        fontFamily: "'Inter', sans-serif",
+        overflow: "hidden"
+    },
+    sidebar: {
+        width: "250px",
+        background: "#1e1e1e",
+        padding: "20px",
+        borderRight: "1px solid #333",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative"
+    },
+    userSection: {
+        marginBottom: "20px",
+        paddingBottom: "10px",
+        borderBottom: "1px solid #333"
+    },
+    nav: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px",
+        marginBottom: "auto"
+    },
+    navBtn: {
+        background: "none",
+        border: "none",
+        color: "#bbb",
+        fontSize: "1rem",
+        cursor: "pointer",
+        padding: "10px",
+        borderRadius: "5px",
+        transition: "background 0.3s",
+        width: "100%",
+        textAlign: "left"
+    },
+    navBtnActive: {
+        background: "#fab005",
+        color: "#121212",
+        fontSize: "1rem",
+        cursor: "pointer",
+        padding: "10px",
+        borderRadius: "5px",
+        width: "100%",
+        textAlign: "left",
+        fontWeight: "bold"
+    },
+    logoutBtn: {
+        position: "absolute",
+        bottom: "20px",
+        left: "20px",
+        right: "20px",
+        background: "#e63946",
+        color: "#fff",
+        border: "none",
+        borderRadius: "5px",
+        padding: "10px",
+        cursor: "pointer",
+        transition: "background 0.3s",
+        width: "100%"
+    },
+    content: {
+        flex: 1,
+        padding: "20px",
+        overflowY: "auto",
+        display: "flex",
+        flexDirection: "column"
+    },
+    pageTitle: {
+        fontSize: "1.8rem",
+        fontWeight: "bold",
+        marginBottom: "20px",
+        color: "#fab005"
+    },
     grid: {
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-        gap: "1.5rem",
-        width: "100%",
-        boxSizing: "border-box"
+        gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+        gap: "15px"
     },
-
-    // Status Bar
-    statusBar: { background: "#1e1e1e", border: "1px solid #333", padding: "12px 20px", borderRadius: "8px", marginBottom: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.2)", flexWrap: "wrap", gap: "10px" },
-    ipTag: { background: "#2b2b2b", padding: "4px 8px", borderRadius: "4px", fontFamily: "monospace", fontSize: "0.85rem", color: "#69db7c", border: "1px solid #69db7c" },
-    ipTagPublic: { background: "#2b2b2b", padding: "4px 8px", borderRadius: "4px", fontFamily: "monospace", fontSize: "0.85rem", color: "#fab005", border: "1px solid #fab005" },
-    miniStopBtn: { background: "#fa5252", color: "white", border: "none", padding: "6px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", fontSize: "0.85rem" },
-
-    // Forms
-    primaryBtn: { background: "#fab005", color: "black", border: "none", padding: "10px 20px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" },
-    secondaryBtn: { background: "#333", color: "white", border: "none", padding: "10px 20px", borderRadius: "6px", cursor: "pointer" },
-    input: { width: "100%", padding: "12px", background: "#2a2a2a", border: "1px solid #444", borderRadius: "6px", color: "white", marginBottom: "15px" },
-    formGroup: { marginBottom: "20px" },
-    googleBtn: { background: "#fff", color: "#333", border: "none", padding: "10px 20px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" },
-    connectedBadge: { color: "#69db7c", border: "1px solid #69db7c", padding: "10px", borderRadius: "6px", display: "inline-block" },
-
-    // Modal
-    modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 2000 },
-    modalContent: { background: "#222", padding: "30px", borderRadius: "12px", border: "1px solid #444", maxWidth: "400px", textAlign: "center" }
+    formGroup: {
+        marginBottom: "15px"
+    },
+    input: {
+        background: "#27272a",
+        border: "1px solid #444",
+        borderRadius: "5px",
+        color: "#e0e0e0",
+        padding: "10px",
+        fontSize: "1rem",
+        width: "100%",
+        transition: "border 0.3s",
+        outline: "none"
+    },
+    primaryBtn: {
+        background: "#fab005",
+        color: "#121212",
+        border: "none",
+        borderRadius: "5px",
+        padding: "10px",
+        cursor: "pointer",
+        fontSize: "1rem",
+        transition: "background 0.3s",
+        width: "100%",
+        textAlign: "center",
+        fontWeight: "bold"
+    },
+    secondaryBtn: {
+        background: "none",
+        color: "#fab005",
+        border: "1px solid #fab005",
+        borderRadius: "5px",
+        padding: "10px",
+        cursor: "pointer",
+        fontSize: "1rem",
+        transition: "background 0.3s",
+        width: "100%",
+        textAlign: "center"
+    },
+    googleBtn: {
+        background: "#4285f4",
+        color: "#fff",
+        border: "none",
+        borderRadius: "5px",
+        padding: "10px",
+        cursor: "pointer",
+        fontSize: "1rem",
+        transition: "background 0.3s",
+        width: "100%",
+        textAlign: "center",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "10px"
+    },
+    connectedBadge: {
+        background: "#4ade80",
+        color: "#121212",
+        borderRadius: "5px",
+        padding: "10px",
+        fontSize: "1rem",
+        textAlign: "center",
+        fontWeight: "bold",
+        width: "100%"
+    },
+    modalOverlay: {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "rgba(0, 0, 0, 0.8)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000
+    },
+    modalContent: {
+        background: "#1e1e1e",
+        borderRadius: "8px",
+        padding: "20px",
+        maxWidth: "500px",
+        width: "100%",
+        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+        position: "relative",
+        zIndex: 1001
+    }
 };
