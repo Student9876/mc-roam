@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { GetServerOptions, SaveServerOptions, GetVersions } from '../../wailsjs/go/backend/App';
+import { ChangeServerVersionWails } from '../../wailsjs/go/backend/App';
 import './SettingsModal.css';
 
 export default function SettingsModal({ serverId, currentUser, onClose }) {
@@ -8,13 +9,14 @@ export default function SettingsModal({ serverId, currentUser, onClose }) {
     const [availableVersions, setAvailableVersions] = useState([]);
     const [selectedType, setSelectedType] = useState('');
     const [selectedVersion, setSelectedVersion] = useState('');
-
+    const [isChangingVersion, setIsChangingVersion] = useState(false);
+    const [versionChangeMsg, setVersionChangeMsg] = useState('');
 
     useEffect(() => {
         loadSettings();
         loadVersions();
+        // eslint-disable-next-line
     }, []);
-
 
     const loadSettings = async () => {
         const data = await GetServerOptions(serverId);
@@ -29,7 +31,6 @@ export default function SettingsModal({ serverId, currentUser, onClose }) {
         setAvailableVersions(versions);
     };
 
-
     const handleSave = async () => {
         // Save version selection in props for now (backend update in next step)
         const updatedProps = { ...props, version: selectedVersion, type: selectedType };
@@ -37,7 +38,6 @@ export default function SettingsModal({ serverId, currentUser, onClose }) {
         alert(result);
         onClose();
     };
-
 
     const handleChange = (key, value) => {
         setProps(prev => ({ ...prev, [key]: value }));
@@ -52,6 +52,20 @@ export default function SettingsModal({ serverId, currentUser, onClose }) {
         setSelectedVersion(e.target.value);
     };
 
+    const handleChangeVersion = async () => {
+        setIsChangingVersion(true);
+        try {
+            if (!selectedType || !selectedVersion) {
+                setIsChangingVersion(false);
+                return;
+            }
+            await ChangeServerVersionWails(serverId, selectedType, selectedVersion);
+            onClose(); // Close modal after command
+        } catch (err) {
+            // Errors will be shown in logs
+        }
+        setIsChangingVersion(false);
+    };
 
     if (isLoading) return <div style={styles.modalOverlay}>Loading Settings...</div>;
 
@@ -74,6 +88,7 @@ export default function SettingsModal({ serverId, currentUser, onClose }) {
                                 value={selectedType || ''}
                                 onChange={handleTypeChange}
                                 style={styles.input}
+                                disabled={isChangingVersion}
                             >
                                 <option value="" disabled>Select type...</option>
                                 {[...new Set(availableVersions.map(v => v.type))].map(type => (
@@ -87,7 +102,7 @@ export default function SettingsModal({ serverId, currentUser, onClose }) {
                                 value={selectedVersion || ''}
                                 onChange={handleVersionChange}
                                 style={styles.input}
-                                disabled={!selectedType}
+                                disabled={!selectedType || isChangingVersion}
                             >
                                 <option value="" disabled>Select version...</option>
                                 {availableVersions.filter(v => v.type === selectedType).map((v) => (
@@ -97,6 +112,14 @@ export default function SettingsModal({ serverId, currentUser, onClose }) {
                                 ))}
                             </select>
                         </div>
+                        <button
+                            style={{...styles.saveBtn, marginTop: 12, opacity: isChangingVersion ? 0.6 : 1}}
+                            onClick={handleChangeVersion}
+                            disabled={isChangingVersion}
+                        >
+                            {isChangingVersion ? 'Changing Version...' : 'Change Version'}
+                        </button>
+                        {/* All feedback/errors are now shown in logs, not here */}
                     </div>
                     {/* General Settings */}
                     <div style={styles.section}>
@@ -165,7 +188,6 @@ export default function SettingsModal({ serverId, currentUser, onClose }) {
             </div>
         </div>
     );
-}
 
 // Helper Component for Toggle Switches
 function Toggle({ label, checked, onChange }) {
@@ -187,7 +209,7 @@ function Toggle({ label, checked, onChange }) {
         </div>
     );
 }
-
+}
 const styles = {
     modalOverlay: {
         position: "fixed", 
