@@ -213,7 +213,14 @@ const ServerCard = ({ server, currentUser, onStart, onStop, onDelete, onSettings
                 <div style={styles.headerRow}>
                     <div>
                         <h3 style={styles.title}>{name}</h3>
-                        <div style={styles.ownerTag}>Owner: {owner === currentUser ? 'You' : owner}</div>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <div style={styles.ownerTag}>Owner: {owner === currentUser ? 'You' : owner}</div>
+                            {server.type && server.version && (
+                                <div style={{ ...styles.ownerTag, background: '#1a4d2e', color: '#4ade80' }}>
+                                    {server.type} {server.version}
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div style={styles.iconGroup}>
                         {/* Only Owner sees Player Manager */}

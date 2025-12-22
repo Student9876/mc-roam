@@ -97,10 +97,12 @@ export default function Dashboard() {
 
     const loadServers = async () => {
         const list = await GetMyServers(currentUser);
-        // Map owner_id to owner for compatibility with ServerCard
+        // Map owner_id to owner and _id to id for compatibility everywhere
         const mappedList = (list || []).map(server => ({
             ...server,
-            owner: server.owner_id || server.owner // Support both field names
+            owner: server.owner_id || server.owner,
+            id: server.id || server._id,   // <-- ensure both are set
+            _id: server._id || server.id   // <-- ensure both are set
         }));
         setServers(mappedList);
     };
@@ -184,6 +186,11 @@ export default function Dashboard() {
             setActivePort(res.split(":")[1]);
             loadServers();
         } else if (res.includes("directory not found")) {
+            const server = servers.find(s => s._id === serverId);
+            console.log("Server found for setup:", server); // Debug
+            console.log("Server type:", server?.type, "Server version:", server?.version); // Debug
+            const versionText = server ? `${server.type || 'Minecraft'} ${server.version || 'Server'}` : "Minecraft Server";
+            console.log("Version text:", versionText); // Debug
             setSetupServerId(serverId);
             setNeedsSetup(true);
         } else {
@@ -583,8 +590,26 @@ export default function Dashboard() {
             {needsSetup && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
-                        <h2>🆕 New Server Detected</h2>
-                        <p>Install Minecraft Server (1.20.4)?</p>
+                        <h2>New Server Detected</h2>
+                        {/* Always lookup server live by _id */}
+                        {(() => {
+                            console.log('setupServerId:', setupServerId);
+                            console.log('servers:', servers.map(s => s._id));
+                            const server = servers.find(s => String(s.id) === String(setupServerId));
+                            return (
+                                <>
+                                    <div style={{ marginBottom: '10px', color: '#4ade80', fontWeight: 600 }}>
+                                        {server?.type || 'Minecraft'} {server?.version || '?'}
+                                    </div>
+                                    <div style={{ marginBottom: '10px', color: '#e0e0e0' }}>
+                                        <b>Name:</b> {server?.name || 'Unknown'}<br/>
+                                        <b>Owner:</b> {server?.owner || server?.owner_id || '?'}<br/>
+                                        <b>Invite Code:</b> {server?.invite_code || '?'}
+                                    </div>
+                                </>
+                            );
+                        })()}
+                        <p>Install this Minecraft Server?</p>
                         <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
                             <button onClick={() => setNeedsSetup(false)} style={styles.secondaryBtn}>Cancel</button>
                             <button onClick={handleInstall} disabled={isInstalling} style={styles.primaryBtn}>
