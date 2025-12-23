@@ -4,6 +4,9 @@ import (
 	"context"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"io"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -99,4 +102,101 @@ func (a *App) SeedVersions() {
 	} else {
 		a.Log("✅ Versions database seeded!")
 	}
+}
+
+// ChangeServerVersion changes the server type and version, preserving world/config files
+func (a *App) ChangeServerVersion(serverID string, newType string, newVersion string, username string) string {
+	// 0. Check if server is running (locked)
+	serversColl := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	var serverDoc ServerGroup
+	err := serversColl.FindOne(ctx, bson.M{"_id": serverID}).Decode(&serverDoc)
+	if err != nil {
+		return "Error: Server not found"
+	}
+	if serverDoc.Lock.IsRunning {
+		return "Error: Cannot change version while server is running! Please stop the server first."
+	}
+
+	// 1. Lookup the requested version/type in the versions collection
+	versionsColl := DB.Client.Database("mc_roam").Collection("versions")
+	var versionDoc ServerVersion
+	err = versionsColl.FindOne(ctx, bson.M{"type": newType, "version": newVersion}).Decode(&versionDoc)
+	if err != nil {
+		return "Error: Version not found in database"
+	}
+
+	// 2. Sync down latest files from cloud
+	instancePath := a.getInstancePath(serverID)
+	remoteFolder := "server-" + serverID
+	a.Log("🔄 Syncing down latest files before version change...")
+	err = a.RunSync(SyncDown, remoteFolder, instancePath)
+	if err != nil {
+		return "Error: Sync down failed: " + err.Error()
+	}
+
+	// 3. Replace server.jar (and any other necessary files)
+	jarPath := filepath.Join(instancePath, "server.jar")
+	// Ensure instance directory exists
+	if _, err := os.Stat(instancePath); os.IsNotExist(err) {
+		a.Log("Instance directory missing, creating: " + instancePath)
+		if err := os.MkdirAll(instancePath, 0755); err != nil {
+			a.Log("Failed to create instance directory: " + err.Error())
+			return "Error: Failed to create instance directory: " + err.Error()
+		}
+	}
+	os.Remove(jarPath)
+	out, err := os.Create(jarPath)
+	if err != nil {
+		a.Log("Failed to create server.jar: " + err.Error())
+		return "Error: Failed to create server.jar file: " + err.Error()
+	}
+	defer out.Close()
+	resp, err := DownloadFile(versionDoc.Url)
+	if err != nil {
+		a.Log("Failed to download new server jar: " + err.Error())
+		return "Error: Failed to download new server jar: " + err.Error()
+	}
+	defer resp.Body.Close()
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		a.Log("Failed to write new server jar: " + err.Error())
+		return "Error: Failed to write new server jar: " + err.Error()
+	}
+
+	// 4. Update the server's type and version in the DB
+	_, err = serversColl.UpdateOne(ctx, bson.M{"_id": serverID}, bson.M{"$set": bson.M{"type": newType, "version": newVersion}})
+	if err != nil {
+		return "Error: Failed to update server type/version in database"
+	}
+
+	// 5. Sync up to save changes in cloud
+	a.Log("☁️ Syncing up after version change...")
+	syncErr := a.RunSync(SyncUp, remoteFolder, instancePath)
+	status := "ok"
+	if syncErr != nil {
+		status = "error"
+	}
+	// Update sync state in DB
+	updateSync := bson.M{
+		"$set": bson.M{
+			"last_sync_status": status,
+			"last_sync_user":   username,
+			"last_sync_time":   time.Now(),
+		},
+	}
+	_, _ = serversColl.UpdateOne(ctx, bson.M{"_id": serverID}, updateSync)
+	if syncErr != nil {
+		return "Error: Sync up failed: " + syncErr.Error()
+	}
+
+	a.Log("✅ Server version changed: " + newType + " " + newVersion)
+	return "Success: Server version changed to " + newType + " " + newVersion
+}
+
+// Wails method: ChangeServerVersion
+// Expose to frontend
+func (a *App) ChangeServerVersionWails(serverID string, newType string, newVersion string, username string) string {
+	return a.ChangeServerVersion(serverID, newType, newVersion, username)
 }
