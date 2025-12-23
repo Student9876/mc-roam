@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -134,6 +135,24 @@ func (a *App) StartPlayitTunnel(serverID string) {
 	a.Log("❌ Failed to establish Playit tunnel after multiple attempts.")
 	a.Log("💡 Possible causes: Firewall blocking, network issues, or invalid secret key.")
 	a.Log("💡 Try: 1) Check firewall settings 2) Verify internet connection 3) Re-import Playit config")
+}
+
+// StopTunnel stops the playit.exe tunnel process
+func (a *App) StopTunnel() error {
+	a.Log("🛑 Stopping Playit tunnel...")
+
+	// Kill all playit.exe processes
+	cmd := exec.Command("taskkill", "/F", "/IM", "playit.exe")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+
+	if err := cmd.Run(); err != nil {
+		// Process might not be running, which is fine
+		a.Log("⚠️ No Playit tunnel found (may already be stopped)")
+		return nil
+	}
+
+	a.Log("✅ Playit tunnel stopped")
+	return nil
 }
 
 // attemptStartPlayit tries to start the Playit tunnel once

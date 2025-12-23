@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings" // Add this to imports at top!
-	"syscall"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -104,7 +103,6 @@ func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's showtime!", name)
 }
 
-// StartServer attempts to acquire the lock and launch the specific instance
 // Add this helper if you haven't already
 func (a *App) Log(message string) {
 	fmt.Println(message) // Print to VS Code
@@ -225,17 +223,6 @@ token = %s
 	return fmt.Sprintf(configTemplate, clientID, clientSecret, tokenJSON)
 }
 
-// Update this function to accept the folder name!
-// func (a *App) CheckCloudExists(folderName string) bool {
-// 	// Construct the path: mc-remote:server-123
-// 	fullPath := "mc-remote:" + folderName
-// 	cmd := exec.Command(getToolPath("rclone.exe"), "lsd", fullPath, "--config", getRcloneConfig())
-// 	if err := cmd.Run(); err != nil {
-// 		return false
-// 	}
-// 	return true
-// }
-
 // forceUnlock resets the server status without syncing files
 func (a *App) forceUnlock(serverID string) {
 	collection := DB.Client.Database("mc_roam").Collection("servers")
@@ -252,24 +239,7 @@ func (a *App) forceUnlock(serverID string) {
 		},
 	}
 	collection.UpdateOne(ctx, filter, update)
-}
 
-// StopTunnel stops the playit.exe tunnel process
-func (a *App) StopTunnel() error {
-	a.Log("🛑 Stopping Playit tunnel...")
-
-	// Kill all playit.exe processes
-	cmd := exec.Command("taskkill", "/F", "/IM", "playit.exe")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-
-	if err := cmd.Run(); err != nil {
-		// Process might not be running, which is fine
-		a.Log("⚠️ No Playit tunnel found (may already be stopped)")
-		return nil
-	}
-
-	a.Log("✅ Playit tunnel stopped")
-	return nil
 }
 
 // deployUserPlayitConfig fetches user's playit.toml from DB and writes to local file
