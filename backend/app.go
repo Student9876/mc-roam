@@ -37,6 +37,8 @@ func NewApp() *App {
 	return &App{}
 }
 
+// CheckCloudExists moved to sync.go for modularization.
+
 // getAppDir returns the directory where the .exe is running
 func getAppDir() string {
 	ex, err := os.Executable()
@@ -46,6 +48,7 @@ func getAppDir() string {
 		return dir
 	}
 	return filepath.Dir(ex)
+	// ForceSyncUp moved to sync.go for modularization.
 }
 
 // ensureDataDir ensures the data folder exists and returns its path
@@ -524,15 +527,15 @@ token = %s
 }
 
 // Update this function to accept the folder name!
-func (a *App) CheckCloudExists(folderName string) bool {
-	// Construct the path: mc-remote:server-123
-	fullPath := "mc-remote:" + folderName
-	cmd := exec.Command(getToolPath("rclone.exe"), "lsd", fullPath, "--config", getRcloneConfig())
-	if err := cmd.Run(); err != nil {
-		return false
-	}
-	return true
-}
+// func (a *App) CheckCloudExists(folderName string) bool {
+// 	// Construct the path: mc-remote:server-123
+// 	fullPath := "mc-remote:" + folderName
+// 	cmd := exec.Command(getToolPath("rclone.exe"), "lsd", fullPath, "--config", getRcloneConfig())
+// 	if err := cmd.Run(); err != nil {
+// 		return false
+// 	}
+// 	return true
+// }
 
 // forceUnlock resets the server status without syncing files
 func (a *App) forceUnlock(serverID string) {
@@ -612,41 +615,41 @@ func (a *App) CheckUserHasPlayit(username string) bool {
 }
 
 // ForceSyncUp is called after setup to ensure config files are saved to cloud
-func (a *App) ForceSyncUp(serverID string) string {
-	collection := DB.Client.Database("mc_roam").Collection("servers")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+// func (a *App) ForceSyncUp(serverID string) string {
+// 	collection := DB.Client.Database("mc_roam").Collection("servers")
+// 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+// 	defer cancel()
 
-	var server ServerGroup
-	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&server)
-	if err != nil {
-		return "Error: Server not found"
-	}
+// 	var server ServerGroup
+// 	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&server)
+// 	if err != nil {
+// 		return "Error: Server not found"
+// 	}
 
-	// Get paths
-	localPath := a.getInstancePath(serverID)
-	remotePath := "server-" + serverID
+// 	// Get paths
+// 	localPath := a.getInstancePath(serverID)
+// 	remotePath := "server-" + serverID
 
-	a.Log("☁️ Uploading Initial Configuration...")
-	syncErr := a.RunSync(SyncUp, remotePath, localPath)
-	status := "ok"
-	if syncErr != nil {
-		status = "error"
-	}
-	// Update sync state in DB
-	updateSync := bson.M{
-		"$set": bson.M{
-			"last_sync_status": status,
-			"last_sync_user":   "force-sync",
-			"last_sync_time":   time.Now(),
-		},
-	}
-	_, _ = collection.UpdateOne(ctx, bson.M{"_id": serverID}, updateSync)
-	if syncErr != nil {
-		return "Error syncing: " + syncErr.Error()
-	}
-	return "Success"
-}
+// 	a.Log("☁️ Uploading Initial Configuration...")
+// 	syncErr := a.RunSync(SyncUp, remotePath, localPath)
+// 	status := "ok"
+// 	if syncErr != nil {
+// 		status = "error"
+// 	}
+// 	// Update sync state in DB
+// 	updateSync := bson.M{
+// 		"$set": bson.M{
+// 			"last_sync_status": status,
+// 			"last_sync_user":   "force-sync",
+// 			"last_sync_time":   time.Now(),
+// 		},
+// 	}
+// 	_, _ = collection.UpdateOne(ctx, bson.M{"_id": serverID}, updateSync)
+// 	if syncErr != nil {
+// 		return "Error syncing: " + syncErr.Error()
+// 	}
+// 	return "Success"
+// }
 
 // getInstancePath generates a unique folder for each server locally using absolute path
 func (a *App) getInstancePath(serverID string) string {

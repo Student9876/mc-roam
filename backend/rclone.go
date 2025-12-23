@@ -1,12 +1,15 @@
 package backend
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
-	"time" // Add this import
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // SyncDirection defines if we are Pulling (Down) or Pushing (Up)
@@ -224,4 +227,49 @@ func shouldSuppressSyncLog(line string) bool {
 		return true
 	}
 	return false
+}
+
+// CheckCloudExists checks if a remote folder exists in the cloud
+func (a *App) CheckCloudExists(folderName string) bool {
+	fullPath := "mc-remote:" + folderName
+	cmd := exec.Command(getToolPath("rclone.exe"), "lsd", fullPath, "--config", getRcloneConfig())
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
+}
+
+// ForceSyncUp is called after setup to ensure config files are saved to cloud
+func (a *App) ForceSyncUp(serverID string) string {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var server ServerGroup
+	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&server)
+	if err != nil {
+		return "Error: Server not found"
+	}
+
+	localPath := a.getInstancePath(serverID)
+	remotePath := "server-" + serverID
+
+	a.Log("☁️ Uploading Initial Configuration...")
+	syncErr := a.RunSync(SyncUp, remotePath, localPath)
+	status := "ok"
+	if syncErr != nil {
+		status = "error"
+	}
+	updateSync := bson.M{
+		"$set": bson.M{
+			"last_sync_status": status,
+			"last_sync_user":   "force-sync",
+			"last_sync_time":   time.Now(),
+		},
+	}
+	_, _ = collection.UpdateOne(ctx, bson.M{"_id": serverID}, updateSync)
+	if syncErr != nil {
+		return "Error syncing: " + syncErr.Error()
+	}
+	return "Success"
 }
