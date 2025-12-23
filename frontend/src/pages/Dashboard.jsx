@@ -103,7 +103,7 @@ export default function Dashboard() {
         try {
             setSystemStatus("Checking system integrity...");
             const ready = await CheckDependencies();
-            
+
             if (ready) {
                 setIsSystemReady(true);
                 loadServers();
@@ -144,7 +144,7 @@ export default function Dashboard() {
     const loadVersions = async () => {
         try {
             const list = await GetVersions();
-            
+
             // 🛑 SAFETY CHECK: If list is null/undefined, stop here to prevent crash
             if (!list || list.length === 0) {
                 console.warn("No versions found in DB.");
@@ -161,7 +161,7 @@ export default function Dashboard() {
             if (types.length > 0) {
                 const firstType = types[0];
                 setSelectedType(firstType);
-                
+
                 const vForType = list.filter(v => v.type === firstType);
                 if (vForType.length > 0) setSelectedVersion(vForType[0].version);
             }
@@ -188,12 +188,12 @@ export default function Dashboard() {
     const handleCreate = async () => {
         if (!newServerName || !rcloneConf || !selectedVersion) return;
         const res = await CreateServer(newServerName, selectedType, selectedVersion, currentUser, rcloneConf);
-        
+
         if (res.startsWith("Error")) {
             alert(res);
             return;
         }
-        
+
         // Reset wizard
         setNewServerName("");
         setRcloneConf("");
@@ -293,7 +293,7 @@ export default function Dashboard() {
                     color: "#888",
                     marginBottom: "2rem"
                 }}>{systemStatus}</p>
-                
+
                 {/* Log Output Window */}
                 {systemLogs.length > 0 && (
                     <div style={{
@@ -350,11 +350,18 @@ export default function Dashboard() {
                     <button style={view === "account" ? styles.navBtnActive : styles.navBtn} onClick={() => setView("account")}>
                         👤 Account
                     </button>
+                    <button onClick={() => { sessionStorage.clear(); navigate("/"); }} style={{
+                        ...styles.logoutBtn,
+                        position: "static",
+                        marginTop: "20px",
+                        left: undefined,
+                        right: undefined,
+                        bottom: undefined,
+                        width: "100%"
+                    }}>
+                        Logout
+                    </button>
                 </nav>
-                
-                <button onClick={() => { sessionStorage.clear(); navigate("/"); }} style={styles.logoutBtn}>
-                    Logout
-                </button>
             </div>
 
             {/* MAIN CONTENT AREA */}
@@ -416,12 +423,12 @@ export default function Dashboard() {
                 {view === "create" && (
                     <div style={{ maxWidth: "500px" }}>
                         <h1 style={styles.pageTitle}>Create New Server</h1>
-                        
+
                         {/* STEP INDICATORS */}
-                        <div style={{display:'flex', gap:'10px', marginBottom:'20px', fontSize:'0.8rem', alignItems:'center'}}>
-                            <span style={{color: createStep>=1 ? '#fab005' : '#444', fontWeight: createStep===1 ? 'bold' : 'normal'}}>1. Details</span>
-                            <span style={{color:'#444'}}>→</span>
-                            <span style={{color: createStep>=2 ? '#fab005' : '#444', fontWeight: createStep===2 ? 'bold' : 'normal'}}>2. Cloud</span>
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', fontSize: '0.8rem', alignItems: 'center' }}>
+                            <span style={{ color: createStep >= 1 ? '#fab005' : '#444', fontWeight: createStep === 1 ? 'bold' : 'normal' }}>1. Details</span>
+                            <span style={{ color: '#444' }}>→</span>
+                            <span style={{ color: createStep >= 2 ? '#fab005' : '#444', fontWeight: createStep === 2 ? 'bold' : 'normal' }}>2. Cloud</span>
                         </div>
 
                         {/* STEP 1: DETAILS */}
@@ -434,13 +441,13 @@ export default function Dashboard() {
 
                                 {/* VERSION SELECTION ROW */}
                                 <div style={{ display: "flex", gap: "15px", marginBottom: "20px" }}>
-                                    
+
                                     {/* 1. TYPE SELECTOR */}
                                     <div style={{ flex: 1 }}>
-                                        <label style={{display: "block", marginBottom: "8px", fontSize: "0.9rem", color: "#aaa"}}>Server Type</label>
-                                        <select 
-                                            style={styles.input} 
-                                            value={selectedType} 
+                                        <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem", color: "#aaa" }}>Server Type</label>
+                                        <select
+                                            style={styles.input}
+                                            value={selectedType}
                                             onChange={(e) => handleTypeChange(e.target.value)}
                                             disabled={availableTypes.length === 0}
                                         >
@@ -453,10 +460,10 @@ export default function Dashboard() {
 
                                     {/* 2. VERSION SELECTOR */}
                                     <div style={{ flex: 1 }}>
-                                        <label style={{display: "block", marginBottom: "8px", fontSize: "0.9rem", color: "#aaa"}}>Game Version</label>
-                                        <select 
-                                            style={styles.input} 
-                                            value={selectedVersion} 
+                                        <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem", color: "#aaa" }}>Game Version</label>
+                                        <select
+                                            style={styles.input}
+                                            value={selectedVersion}
                                             onChange={(e) => setSelectedVersion(e.target.value)}
                                             disabled={!selectedType}
                                         >
@@ -469,9 +476,9 @@ export default function Dashboard() {
                                         </select>
                                     </div>
                                 </div>
-                                
-                                <button 
-                                    onClick={() => setCreateStep(2)} 
+
+                                <button
+                                    onClick={() => setCreateStep(2)}
                                     disabled={!newServerName || !selectedVersion}
                                     style={styles.primaryBtn}
                                 >
@@ -485,7 +492,7 @@ export default function Dashboard() {
                             <>
                                 <div style={styles.formGroup}>
                                     <label>Google Drive Connection</label>
-                                    <p style={{fontSize:'0.8rem', color:'#888', marginBottom:'15px'}}>
+                                    <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '15px' }}>
                                         Your world data will be synced to Google Drive for backup and multiplayer sharing.
                                     </p>
                                     {!rcloneConf ? (
@@ -496,24 +503,24 @@ export default function Dashboard() {
                                         <div style={styles.connectedBadge}>✅ Google Drive Connected</div>
                                     )}
                                 </div>
-                                
-                                <div style={{background:'#27272a', padding:'15px', borderRadius:'8px', marginBottom:'20px', fontSize:'0.85rem', lineHeight:'1.5', color:'#aaa'}}>
-                                    <div style={{marginBottom:'8px', color:'#fab005', fontWeight:'bold'}}>🌐 Public Access (Optional)</div>
-                                    <p style={{margin:0}}>To enable public access for this server, set up your Playit account in <b>Account Settings</b> (sidebar) before hosting.</p>
+
+                                <div style={{ background: '#27272a', padding: '15px', borderRadius: '8px', marginBottom: '20px', fontSize: '0.85rem', lineHeight: '1.5', color: '#aaa' }}>
+                                    <div style={{ marginBottom: '8px', color: '#fab005', fontWeight: 'bold' }}>🌐 Public Access (Optional)</div>
+                                    <p style={{ margin: 0 }}>To enable public access for this server, set up your Playit account in <b>Account Settings</b> (sidebar) before hosting.</p>
                                 </div>
 
-                                <div style={{display:'flex', gap:'10px'}}>
+                                <div style={{ display: 'flex', gap: '10px' }}>
                                     <button style={styles.secondaryBtn} onClick={() => setCreateStep(1)}>← Back</button>
-                                    <button 
-                                        style={styles.primaryBtn} 
-                                        disabled={!rcloneConf} 
+                                    <button
+                                        style={styles.primaryBtn}
+                                        disabled={!rcloneConf}
                                         onClick={async () => {
                                             const id = await CreateServer(newServerName, selectedType, selectedVersion, currentUser, rcloneConf);
                                             if (id.startsWith("Error")) {
                                                 alert(id);
                                                 return;
                                             }
-                                            
+
                                             alert("✅ Server created successfully!");
                                             setNewServerName("");
                                             setRcloneConf("");
@@ -547,34 +554,34 @@ export default function Dashboard() {
                 {view === "account" && (
                     <div style={{ maxWidth: "600px" }}>
                         <h1 style={styles.pageTitle}>Account Settings</h1>
-                        
+
                         <div style={{ background: '#1e1e1e', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
                             <h3 style={{ color: '#fab005', marginBottom: '15px' }}>🌐 Public Access (Playit.gg)</h3>
                             <p style={{ color: '#aaa', fontSize: '0.9rem', marginBottom: '20px' }}>
                                 Set up your Playit.gg tunnel to allow friends to join your servers from anywhere.
                                 This setup is done once and works for all servers you host.
                             </p>
-                            
-                            <div style={{background:'#27272a', padding:'15px', borderRadius:'8px', marginBottom:'20px', fontSize:'0.9rem', lineHeight:'1.6', color:'#ddd', textAlign:'left'}}>
-                                <div style={{marginBottom:'10px', fontWeight:'bold', color:'#fab005'}}>Instructions:</div>
-                                <ol style={{paddingLeft:'20px', margin:0, textAlign:'left'}}>
-                                    <li style={{marginBottom:'6px'}}>Click <b>"Launch Setup Terminal"</b> below.</li>
-                                    <li style={{marginBottom:'6px'}}>Copy the <span style={{color:'#4dabf7', fontFamily:'monospace'}}>https://playit.gg/claim/...</span> link, <b>Claim it</b> in your browser.</li>
-                                    <li style={{marginBottom:'6px'}}>Once it says "Agent Online", you can close the terminal.</li>
+
+                            <div style={{ background: '#27272a', padding: '15px', borderRadius: '8px', marginBottom: '20px', fontSize: '0.9rem', lineHeight: '1.6', color: '#ddd', textAlign: 'left' }}>
+                                <div style={{ marginBottom: '10px', fontWeight: 'bold', color: '#fab005' }}>Instructions:</div>
+                                <ol style={{ paddingLeft: '20px', margin: 0, textAlign: 'left' }}>
+                                    <li style={{ marginBottom: '6px' }}>Click <b>"Launch Setup Terminal"</b> below.</li>
+                                    <li style={{ marginBottom: '6px' }}>Copy the <span style={{ color: '#4dabf7', fontFamily: 'monospace' }}>https://playit.gg/claim/...</span> link, <b>Claim it</b> in your browser.</li>
+                                    <li style={{ marginBottom: '6px' }}>Once it says "Agent Online", you can close the terminal.</li>
                                     <li>Click <b>"Save Playit Config"</b> below.</li>
                                 </ol>
                             </div>
 
-                            <button 
+                            <button
                                 style={{
-                                    ...styles.secondaryBtn, 
-                                    width:'100%', 
-                                    justifyContent:'center',
-                                    border:'1px solid #fab005', 
-                                    color:'#fab005',
-                                    background:'rgba(250, 176, 5, 0.1)',
-                                    marginBottom:'15px'
-                                }} 
+                                    ...styles.secondaryBtn,
+                                    width: '100%',
+                                    justifyContent: 'center',
+                                    border: '1px solid #fab005',
+                                    color: '#fab005',
+                                    background: 'rgba(250, 176, 5, 0.1)',
+                                    marginBottom: '15px'
+                                }}
                                 onClick={async () => {
                                     const result = await LaunchPlayitExternally("temp");
                                     if (result.startsWith("Error")) {
@@ -585,7 +592,7 @@ export default function Dashboard() {
                                 🚀 Launch Setup Terminal
                             </button>
 
-                            <button 
+                            <button
                                 style={{
                                     ...styles.primaryBtn,
                                     width: '100%',
@@ -593,7 +600,7 @@ export default function Dashboard() {
                                 }}
                                 onClick={async () => {
                                     const res = await ImportPlayitConfig(currentUser);
-                                    
+
                                     if (res === "Success") {
                                         alert("✅ Playit config saved to your account! Your tunnel will work on any server you host.");
                                     } else {
@@ -623,24 +630,24 @@ export default function Dashboard() {
             {/* MODALS */}
             {settingsServerId && <SettingsModal serverId={settingsServerId} currentUser={currentUser} onClose={() => setSettingsServerId(null)} />}
             {worldSettingsId && (
-                <WorldModal 
+                <WorldModal
                     server={servers.find(s => s.id === worldSettingsId)}
                     currentUser={currentUser}
-                    onClose={() => setWorldSettingsId(null)} 
+                    onClose={() => setWorldSettingsId(null)}
                 />
             )}
             {playerId && (
-                <PlayerModal 
+                <PlayerModal
                     server={servers.find(s => s.id === playerId)}
                     currentUser={currentUser}
-                    onClose={() => setPlayerId(null)} 
+                    onClose={() => setPlayerId(null)}
                 />
             )}
             {adminModalId && (
-                <AdminModal 
+                <AdminModal
                     server={servers.find(s => s.id === adminModalId)}
                     currentUser={currentUser}
-                    onClose={() => setAdminModalId(null)} 
+                    onClose={() => setAdminModalId(null)}
                 />
             )}
 
@@ -656,8 +663,8 @@ export default function Dashboard() {
                                         {(server?.type || 'Minecraft') + ' ' + (server?.version || '?')}
                                     </div>
                                     <div style={{ marginBottom: '10px', color: '#e0e0e0' }}>
-                                        <b>Name:</b> {server?.name || 'Unknown'}<br/>
-                                        <b>Owner:</b> {server?.owner || server?.owner_id || '?'}<br/>
+                                        <b>Name:</b> {server?.name || 'Unknown'}<br />
+                                        <b>Owner:</b> {server?.owner || server?.owner_id || '?'}<br />
                                         <b>Invite Code:</b> {server?.invite_code || '?'}
                                     </div>
                                 </>
