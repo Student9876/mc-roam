@@ -1,0 +1,241 @@
+/* ServerCard Component Styles */
+
+.server-card {
+    background-color: #1e1e1e;
+    border-radius: 16px;
+    padding: 0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.2s;
+    position: relative;
+}
+
+.server-card__header-strip {
+    height: 6px;
+    width: 100%;
+}
+
+.server-card__header-strip--running {
+    background: linear-gradient(90deg, #40c057, #82c91e);
+}
+
+.server-card__header-strip--offline {
+    background: linear-gradient(90deg, #fab005, #fd7e14);
+}
+
+.server-card__content {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.server-card__header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 8px;
+}
+
+.server-card__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 4px 0;
+    word-break: break-word;
+    text-align: left;
+}
+
+.server-card__tags {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.server-card__owner-tag {
+    font-size: 0.65rem;
+    color: #666;
+    background: #252525;
+    padding: 2px 5px;
+    border-radius: 3px;
+    margin-top: 3px;
+    display: inline-block;
+}
+
+.server-card__version-tag {
+    font-size: 0.65rem;
+    background: #1a4d2e;
+    color: #4ade80;
+    padding: 2px 5px;
+    border-radius: 3px;
+    margin-top: 3px;
+    display: inline-block;
+}
+
+.server-card__icon-group {
+    display: flex;
+    gap: 6px;
+}
+
+.server-card__icon-btn {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #ccc;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.server-card__icon-btn:hover {
+    background: #333;
+    border-color: #555;
+}
+
+.server-card__icon-btn--delete {
+    color: #fa5252;
+    border-color: rgba(250, 82, 82, 0.3);
+    background: rgba(250, 82, 82, 0.1);
+}
+
+.server-card__icon-btn--delete:hover {
+    background: rgba(250, 82, 82, 0.2);
+}
+
+.server-card__info-block {
+    background: #252525;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.server-card__info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    gap: 8px;
+}
+
+.server-card__info-label {
+    color: #888;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    min-width: 80px;
+    flex-shrink: 0;
+}
+
+.server-card__info-value {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.server-card__code-blur {
+    font-family: monospace;
+    background: #1a1a1a;
+    padding: 4px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    border: 1px dashed #444;
+    font-size: 0.75rem;
+    min-width: 70px;
+    text-align: center;
+}
+
+.server-card__code-blur--hidden {
+    color: #555;
+}
+
+.server-card__code-blur--visible {
+    color: #fab005;
+}
+
+.server-card__address-box {
+    font-family: monospace;
+    background: #1a1a1a;
+    padding: 4px 6px;
+    border-radius: 4px;
+    color: #40c057;
+    font-size: 0.75rem;
+    border: 1px solid rgba(64, 192, 87, 0.3);
+    word-break: break-all;
+    max-width: 140px;
+}
+
+.server-card__copy-btn {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #4dabf7;
+    padding: 4px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.65rem;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    transition: all 0.2s;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.server-card__copy-btn:hover {
+    background: #333;
+    border-color: #555;
+}
+
+.server-card__action-btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-top: 6px;
+    color: white;
+    transition: transform 0.1s;
+}
+
+.server-card__action-btn--running {
+    background: #fa5252;
+    box-shadow: 0 4px 15px rgba(250, 82, 82, 0.4);
+}
+
+.server-card__action-btn--stopped {
+    background: #228be6;
+    box-shadow: 0 4px 15px rgba(34, 139, 230, 0.4);
+}
+
+.server-card__action-btn:hover {
+    transform: translateY(-1px);
+}
+
+.server-card__action-btn:active {
+    transform: translateY(0);
+}
+
+.server-card__action-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}

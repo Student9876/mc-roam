@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GetPlayerLists, ManagePlayer } from '../../wailsjs/go/backend/App';
 import PlayerDetail from './PlayerDetail';
+import './PlayerModal.css';
 
 export default function PlayerModal({ server, currentUser, onClose }) {
     const [lists, setLists] = useState({ ops: [], whitelist: [], banned: [], history: [] });
@@ -29,13 +30,12 @@ export default function PlayerModal({ server, currentUser, onClose }) {
             return;
         }
 
-        // Now calling ManagePlayer with 5 arguments including username
         const res = await ManagePlayer(server.id, currentUser, action, targetName, extra);
         if (res === "Success") {
             // Wait a sec for server to update JSON files, then refresh UI
             setTimeout(() => setRefreshTrigger(prev => prev + 1), 1000);
             setInputName("");
-            if(action.includes("ban") || action.includes("kick")) setSelectedPlayer(null); // Close detail if banned
+            if (action.includes("ban") || action.includes("kick")) setSelectedPlayer(null);
         } else {
             alert(res);
         }
@@ -47,8 +47,8 @@ export default function PlayerModal({ server, currentUser, onClose }) {
     };
 
     return (
-        <div style={styles.overlay}>
-            <div style={styles.modal}>
+        <div className="player-modal-overlay">
+            <div className="player-modal">
 
                 {/* CONDITIONAL RENDERING: Detail View OR List View */}
                 {selectedPlayer ? (
@@ -57,25 +57,25 @@ export default function PlayerModal({ server, currentUser, onClose }) {
                         knownPlayers={lists.history || []}
                         onBack={() => {
                             setSelectedPlayer(null);
-                            setRefreshTrigger(prev => prev + 1); // Refresh lists when coming back
+                            setRefreshTrigger(prev => prev + 1);
                         }}
                         onAction={handleAction}
                     />
                 ) : (
                     <>
                         {/* HEADER */}
-                        <div style={styles.header}>
-                            <div style={{ display: 'flex', alignItems: 'left', gap: '10px' }}>
+                        <div className="player-modal-header">
+                            <div className="player-modal-header-content">
                                 <div>
-                                    <h2 style={{ margin: 0, color: '#fff' }}>Player Manager</h2>
-                                    <div style={styles.subTitle}>Manage Whitelist, OPs, and Bans</div>
+                                    <h2 className="player-modal-title">Player Manager</h2>
+                                    <div className="player-modal-subtitle">Manage Whitelist, OPs, and Bans</div>
                                 </div>
                             </div>
-                            <button onClick={onClose} style={styles.closeBtn}>×</button>
+                            <button onClick={onClose} className="player-modal-close-btn">×</button>
                         </div>
 
                         {/* TABS */}
-                        <div style={styles.tabs}>
+                        <div className="player-modal-tabs">
                             <TabButton label="All Players" active={activeTab === "HISTORY"} onClick={() => setActiveTab("HISTORY")} />
                             <TabButton label="Whitelist" active={activeTab === "WHITELIST"} onClick={() => setActiveTab("WHITELIST")} />
                             <TabButton label="Operators (OP)" active={activeTab === "OPS"} onClick={() => setActiveTab("OPS")} />
@@ -84,15 +84,15 @@ export default function PlayerModal({ server, currentUser, onClose }) {
 
                         {/* ADD PLAYER INPUT (Only for management tabs) */}
                         {activeTab !== "HISTORY" && (
-                            <div style={styles.actionBar}>
+                            <div className="player-modal-action-bar">
                                 <input
-                                    style={styles.input}
+                                    className="player-modal-input"
                                     placeholder={`Add player to ${activeTab.toLowerCase()}...`}
                                     value={inputName}
                                     onChange={(e) => setInputName(e.target.value)}
                                 />
                                 <button
-                                    style={styles.addBtn}
+                                    className="player-modal-add-btn"
                                     onClick={() => {
                                         const actionMap = { "WHITELIST": "whitelist_add", "OPS": "op", "BANNED": "ban" };
                                         handleAction(actionMap[activeTab], inputName);
@@ -105,36 +105,36 @@ export default function PlayerModal({ server, currentUser, onClose }) {
                         )}
 
                         {/* LIST CONTENT */}
-                        <div style={styles.content}>
+                        <div className="player-modal-content">
                             {getListForTab(activeTab, lists).length === 0 && (
-                                <div style={styles.emptyState}>No players found in this list.</div>
+                                <div className="player-modal-empty-state">No players found in this list.</div>
                             )}
 
                             {getListForTab(activeTab, lists).map((p, i) => (
-                                <div key={i} style={styles.playerCard}>
+                                <div key={i} className="player-modal-player-card">
                                     <div
-                                        style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer', flex: 1 }}
+                                        className="player-modal-player-info"
                                         onClick={() => setSelectedPlayer(p)}
                                     >
                                         <img
                                             src={`https://crafatar.com/avatars/${p.uuid || p.name}?size=32&overlay`}
                                             alt="head"
-                                            style={styles.head}
+                                            className="player-modal-player-head"
                                             onError={(e) => e.target.src = "https://crafatar.com/avatars/Steve?size=32"}
                                         />
                                         <div>
-                                            <div style={styles.playerName}>{p.name || "Unknown"}</div>
-                                            <div style={styles.uuid}>{p.uuid}</div>
+                                            <div className="player-modal-player-name">{p.name || "Unknown"}</div>
+                                            <div className="player-modal-player-uuid">{p.uuid}</div>
                                         </div>
                                     </div>
 
                                     {/* ACTION BUTTONS */}
-                                    <div style={styles.actions}>
+                                    <div className="player-modal-actions">
                                         {activeTab === "HISTORY" && (
                                             <>
                                                 {/* OP TOGGLE */}
                                                 <button
-                                                    style={isInList("ops", p.name) ? styles.tagOpActive : styles.tagOp}
+                                                    className={isInList("ops", p.name) ? "player-modal-tag-op--active" : "player-modal-tag-op"}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         handleAction(isInList("ops", p.name) ? "deop" : "op", p.name);
@@ -146,7 +146,7 @@ export default function PlayerModal({ server, currentUser, onClose }) {
 
                                                 {/* BAN BUTTON */}
                                                 <button
-                                                    style={styles.btnIcon}
+                                                    className="player-modal-btn-icon"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         handleAction("ban", p.name);
@@ -160,7 +160,7 @@ export default function PlayerModal({ server, currentUser, onClose }) {
 
                                         {activeTab === "WHITELIST" && (
                                             <button
-                                                style={styles.btnRemove}
+                                                className="player-modal-btn-remove"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleAction("whitelist_remove", p.name);
@@ -171,7 +171,7 @@ export default function PlayerModal({ server, currentUser, onClose }) {
                                         )}
                                         {activeTab === "OPS" && (
                                             <button
-                                                style={styles.btnRemove}
+                                                className="player-modal-btn-remove"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleAction("deop", p.name);
@@ -182,7 +182,7 @@ export default function PlayerModal({ server, currentUser, onClose }) {
                                         )}
                                         {activeTab === "BANNED" && (
                                             <button
-                                                style={styles.btnRemove}
+                                                className="player-modal-btn-remove"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleAction("unban", p.name);
@@ -215,40 +215,8 @@ function getListForTab(tab, lists) {
 
 function TabButton({ label, active, onClick }) {
     return (
-        <button onClick={onClick} style={active ? styles.tabActive : styles.tab}>
+        <button onClick={onClick} className={active ? "player-modal-tab--active" : "player-modal-tab"}>
             {label}
         </button>
     );
 }
-
-const styles = {
-    overlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 3000 },
-    modal: { background: "#18181b", width: "600px", height: "650px", borderRadius: "16px", border: "1px solid #27272a", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" },
-
-    header: { padding: "20px", borderBottom: "1px solid #27272a", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#202023" },
-    subTitle: { fontSize: "0.8rem", color: "#888" },
-    closeBtn: { background: "none", border: "none", color: "#71717a", fontSize: "1.8rem", cursor: "pointer" },
-
-    tabs: { display: "flex", borderBottom: "1px solid #27272a", background: "#18181b" },
-    tab: { flex: 1, padding: "14px", background: "transparent", border: "none", color: "#71717a", cursor: "pointer", fontWeight: "600", borderBottom: "2px solid transparent" },
-    tabActive: { flex: 1, padding: "14px", background: "#27272a", border: "none", color: "#fff", cursor: "pointer", fontWeight: "bold", borderBottom: "2px solid #3b82f6" },
-
-    actionBar: { padding: "15px", display: "flex", gap: "10px", borderBottom: "1px solid #27272a" },
-    input: { flex: 1, padding: "10px", borderRadius: "8px", background: "#27272a", border: "1px solid #3f3f46", color: "white" },
-    addBtn: { padding: "10px 20px", borderRadius: "8px", background: "#3b82f6", color: "white", border: "none", fontWeight: "bold", cursor: "pointer" },
-
-    content: { padding: "20px", overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: "10px" },
-    emptyState: { textAlign: "center", color: "#555", marginTop: "50px", fontStyle: "italic" },
-
-    playerCard: { background: "#27272a", padding: "10px 15px", borderRadius: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid #3f3f46" },
-    head: { borderRadius: "6px" },
-    playerName: { color: "white", fontWeight: "bold", fontSize: "0.95rem" },
-    uuid: { color: "#71717a", fontSize: "0.7rem", fontFamily: "monospace" },
-
-    actions: { display: "flex", gap: "8px" },
-    btnRemove: { background: "rgba(239, 68, 68, 0.2)", color: "#ef4444", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem", fontWeight: "bold" },
-    btnIcon: { background: "#3f3f46", color: "#fff", border: "none", width: "32px", height: "32px", borderRadius: "6px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" },
-
-    tagOp: { background: "#3f3f46", color: "#aaa", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", fontSize: "0.75rem" },
-    tagOpActive: { background: "rgba(16, 185, 129, 0.2)", color: "#10b981", border: "1px solid #10b981", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", fontSize: "0.75rem" },
-};

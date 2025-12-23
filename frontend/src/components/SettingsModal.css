@@ -1,60 +1,123 @@
+/* SettingsModal Component Styles */
+
+/* Modal Overlay */
+.settings-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
+}
+
+/* Modal Content */
+.settings-modal-content {
+    background: linear-gradient(135deg, #1e1e1e 0%, #252525 100%);
+    padding: 0;
+    border-radius: 16px;
+    width: 850px;
+    max-width: 90vw;
+    max-height: 85vh;
+    border: 1px solid #444;
+    color: white;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Header */
+.settings-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 28px;
+    border-bottom: 1px solid #333;
+    background: rgba(26, 26, 26, 0.5);
+}
+
+.settings-modal-title {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.settings-modal-close-btn {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #ccc;
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.settings-modal-close-btn:hover {
+    background: #fa5252;
+    color: white;
+    border-color: #fa5252;
+}
+
+/* Scroll Area */
+.settings-modal-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 24px 28px;
+    flex: 1;
+}
+
 /* Custom Scrollbar for Settings Modal */
-.settings-scroll::-webkit-scrollbar {
+.settings-modal-scroll::-webkit-scrollbar {
     width: 8px;
 }
 
-.settings-scroll::-webkit-scrollbar-track {
+.settings-modal-scroll::-webkit-scrollbar-track {
     background: #1e1e1e;
     border-radius: 10px;
 }
 
-.settings-scroll::-webkit-scrollbar-thumb {
+.settings-modal-scroll::-webkit-scrollbar-thumb {
     background-color: #444;
     border-radius: 10px;
     border: 2px solid #1e1e1e;
 }
 
-.settings-scroll::-webkit-scrollbar-thumb:hover {
+.settings-modal-scroll::-webkit-scrollbar-thumb:hover {
     background-color: #555;
 }
 
-/* Toggle Switch Animation */
-.settings-modal input[type="checkbox"] + span::before {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: white;
-    transition: 0.3s;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+/* Grid Layout */
+.settings-modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
 }
 
-.settings-modal input[type="checkbox"]:checked + span::before {
-    transform: translateX(24px);
+/* Section */
+.settings-modal-section {
+    background: rgba(26, 26, 26, 0.6);
+    padding: 18px;
+    border-radius: 12px;
+    border: 1px solid #333;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
-/* Hover Effects */
-.settings-modal input:hover,
-.settings-modal select:hover {
-    border-color: #4dabf7;
-}
-
-.settings-modal input:focus,
-.settings-modal select:focus {
-    outline: none;
-    border-color: #4dabf7;
-    box-shadow: 0 0 0 2px rgba(77, 171, 247, 0.2);
-}
-
-.settings-modal button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(250, 176, 5, 0.4);
-}
-
-.settings-modal h4 {
+.settings-modal-section h4 {
     margin-top: 0;
     margin-bottom: 14px;
     color: #fab005;
@@ -66,32 +129,181 @@
     padding-bottom: 8px;
 }
 
+/* Labels */
+.settings-modal-label {
+    display: block;
+    font-size: 0.85rem;
+    color: #aaa;
+    font-weight: 500;
+    margin-bottom: 6px;
+    margin-top: 8px;
+}
+
+/* Input Wrapper */
+.settings-modal-input-wrapper {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+}
+
+/* Inputs and Selects */
+.settings-modal-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    background: #2a2a2a;
+    color: white;
+    border: 1px solid #444;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.settings-modal-input:hover {
+    border-color: #4dabf7;
+}
+
+.settings-modal-input:focus {
+    outline: none;
+    border-color: #4dabf7;
+    box-shadow: 0 0 0 2px rgba(77, 171, 247, 0.2);
+}
+
 /* Prevent input number spinner overflow */
-.settings-modal input[type="number"] {
+.settings-modal-input[type="number"] {
     -moz-appearance: textfield;
 }
 
-.settings-modal input[type="number"]::-webkit-outer-spin-button,
-.settings-modal input[type="number"]::-webkit-inner-spin-button {
+.settings-modal-input[type="number"]::-webkit-outer-spin-button,
+.settings-modal-input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
 
 /* Ensure select dropdown doesn't overflow */
-.settings-modal select {
+select.settings-modal-input {
     max-width: 100%;
     box-sizing: border-box;
 }
 
-/* Toggle Container Hover */
-.settings-modal .toggleContainer:hover {
+/* Footer */
+.settings-modal-footer {
+    padding: 20px 28px;
+    text-align: right;
+    border-top: 1px solid #333;
+    background: rgba(26, 26, 26, 0.5);
+}
+
+/* Save Button */
+.settings-modal-save-btn {
+    background: #fab005;
+    color: black;
+    padding: 12px 28px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(250, 176, 5, 0.3);
+}
+
+.settings-modal-save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(250, 176, 5, 0.4);
+}
+
+.settings-modal-save-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Toggle Container */
+.settings-modal-toggle-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    background: #2a2a2a;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    transition: all 0.2s;
+}
+
+.settings-modal-toggle-container:hover {
     background: #333;
     border-color: #4dabf7;
 }
 
-/* Close Button Hover */
-.settings-modal button[style*="closeBtn"]:hover {
-    background: #fa5252;
+.settings-modal-toggle-label {
+    font-size: 0.9rem;
+    color: #e0e0e0;
+    font-weight: 500;
+}
+
+/* Toggle Switch */
+.settings-modal-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+    cursor: pointer;
+}
+
+.settings-modal-switch input {
+    display: none;
+}
+
+.settings-modal-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 24px;
+    transition: 0.3s;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.settings-modal-slider--checked {
+    background: #4dabf7;
+}
+
+.settings-modal-slider--unchecked {
+    background: #555;
+}
+
+/* Toggle Switch Animation */
+.settings-modal-slider::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: white;
+    transition: 0.3s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.settings-modal-switch input:checked + .settings-modal-slider::before {
+    transform: translateX(24px);
+}
+
+/* Loading State */
+.settings-modal-loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
     color: white;
-    border-color: #fa5252;
+    font-size: 1.2rem;
 }
