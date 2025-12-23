@@ -8,24 +8,6 @@ import (
 	// "time"
 )
 
-// PlayerStructs for reading Minecraft JSON files
-type PlayerEntry struct {
-	UUID    string `json:"uuid"`
-	Name    string `json:"name"`
-	Level   int    `json:"level,omitempty"`   // For ops.json
-	Reason  string `json:"reason,omitempty"`  // For bans
-	Created string `json:"created,omitempty"` // For bans
-	Source  string `json:"source,omitempty"`  // For bans
-	Expires string `json:"expires,omitempty"` // For bans
-}
-
-type PlayerLists struct {
-	Ops       []PlayerEntry `json:"ops"`
-	Whitelist []PlayerEntry `json:"whitelist"`
-	Banned    []PlayerEntry `json:"banned"`
-	History   []PlayerEntry `json:"history"` // From usercache.json
-}
-
 // GetPlayerLists reads all player-related JSON files
 func (a *App) GetPlayerLists(serverID string) PlayerLists {
 	instanceDir := a.getInstancePath(serverID)

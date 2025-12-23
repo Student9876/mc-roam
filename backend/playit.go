@@ -290,3 +290,29 @@ func (a *App) saveTunnelURL(serverID string, tunnelURL string) {
 		a.Log("⚠️ Failed to save tunnel URL to database")
 	}
 }
+
+// deployUserPlayitConfig fetches user's playit.toml from DB and writes to local file
+func (a *App) deployUserPlayitConfig(username string, destPath string) error {
+	collection := DB.Client.Database("mc_roam").Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var user User
+	err := collection.FindOne(ctx, bson.M{"username": username}).Decode(&user)
+	if err != nil {
+		return fmt.Errorf("user not found")
+	}
+
+	if user.PlayitTomlContent == "" {
+		return fmt.Errorf("no playit config in user account")
+	}
+
+	// Write the config to the destination
+	err = os.WriteFile(destPath, []byte(user.PlayitTomlContent), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write config: %v", err)
+	}
+
+	a.Log("✅ Deployed your Playit tunnel config")
+	return nil
+}

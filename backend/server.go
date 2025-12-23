@@ -39,6 +39,59 @@ func (a *App) CreateServer(serverName string, serverType string, version string,
 	return newID // Return the server ID for frontend to use
 }
 
+// DeleteServer removes the server from DB, Local Disk, and Cloud
+func (a *App) DeleteServer(serverID string, username string) string {
+	collection := DB.Client.Database("mc_roam").Collection("servers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// 1. Fetch Server to check ownership
+	var serverDoc ServerGroup
+	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&serverDoc)
+	if err != nil {
+		return "Error: Server not found."
+	}
+
+	// 2. SECURITY CHECK (The Fix)
+	// We check 'OwnerID' because that is what is stored in your MongoDB
+	if serverDoc.OwnerID != username {
+		return "Error: Only the server owner can delete this server."
+	}
+
+	// 3. Safety Check: Is it running?
+	if serverDoc.Lock.IsRunning {
+		return "Error: Stop the server before deleting it."
+	}
+
+	// 4. Delete from Database
+	_, err = collection.DeleteOne(ctx, bson.M{"_id": serverID})
+	if err != nil {
+		return "Error: Failed to delete from DB."
+	}
+
+	// 5. Delete Local Files
+	localPath := a.getInstancePath(serverID)
+	err = os.RemoveAll(localPath)
+	if err != nil {
+		a.Log("⚠️ Warning: Could not fully delete local files: " + err.Error())
+	} else {
+		a.Log("🗑️ Deleted local files.")
+	}
+
+	// 6. Delete Cloud Files (Background)
+	go func() {
+		// Matches the folder name format used in your rclone sync
+		err := a.PurgeRemote("server-" + serverID)
+		if err != nil {
+			a.Log("⚠️ Failed to delete cloud files: " + err.Error())
+		} else {
+			a.Log("🔥 Deleted cloud backup.")
+		}
+	}()
+
+	return "Success"
+}
+
 // GetMyServers returns a list of servers the user belongs to
 func (a *App) GetMyServers(username string) []ServerGroup {
 	collection := DB.Client.Database("mc_roam").Collection("servers")

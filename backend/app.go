@@ -35,8 +35,6 @@ func NewApp() *App {
 	return &App{}
 }
 
-// CheckCloudExists moved to sync.go for modularization.
-
 // getAppDir returns the directory where the .exe is running
 func getAppDir() string {
 	ex, err := os.Executable()
@@ -242,32 +240,6 @@ func (a *App) forceUnlock(serverID string) {
 
 }
 
-// deployUserPlayitConfig fetches user's playit.toml from DB and writes to local file
-func (a *App) deployUserPlayitConfig(username string, destPath string) error {
-	collection := DB.Client.Database("mc_roam").Collection("users")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	var user User
-	err := collection.FindOne(ctx, bson.M{"username": username}).Decode(&user)
-	if err != nil {
-		return fmt.Errorf("user not found")
-	}
-
-	if user.PlayitTomlContent == "" {
-		return fmt.Errorf("no playit config in user account")
-	}
-
-	// Write the config to the destination
-	err = os.WriteFile(destPath, []byte(user.PlayitTomlContent), 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write config: %v", err)
-	}
-
-	a.Log("✅ Deployed your Playit tunnel config")
-	return nil
-}
-
 // CheckUserHasPlayit returns true if user has playit config in their account
 func (a *App) CheckUserHasPlayit(username string) bool {
 	collection := DB.Client.Database("mc_roam").Collection("users")
@@ -283,100 +255,10 @@ func (a *App) CheckUserHasPlayit(username string) bool {
 	return user.PlayitTomlContent != ""
 }
 
-// ForceSyncUp is called after setup to ensure config files are saved to cloud
-// func (a *App) ForceSyncUp(serverID string) string {
-// 	collection := DB.Client.Database("mc_roam").Collection("servers")
-// 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-// 	defer cancel()
-
-// 	var server ServerGroup
-// 	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&server)
-// 	if err != nil {
-// 		return "Error: Server not found"
-// 	}
-
-// 	// Get paths
-// 	localPath := a.getInstancePath(serverID)
-// 	remotePath := "server-" + serverID
-
-// 	a.Log("☁️ Uploading Initial Configuration...")
-// 	syncErr := a.RunSync(SyncUp, remotePath, localPath)
-// 	status := "ok"
-// 	if syncErr != nil {
-// 		status = "error"
-// 	}
-// 	// Update sync state in DB
-// 	updateSync := bson.M{
-// 		"$set": bson.M{
-// 			"last_sync_status": status,
-// 			"last_sync_user":   "force-sync",
-// 			"last_sync_time":   time.Now(),
-// 		},
-// 	}
-// 	_, _ = collection.UpdateOne(ctx, bson.M{"_id": serverID}, updateSync)
-// 	if syncErr != nil {
-// 		return "Error syncing: " + syncErr.Error()
-// 	}
-// 	return "Success"
-// }
-
 // getInstancePath generates a unique folder for each server locally using absolute path
 func (a *App) getInstancePath(serverID string) string {
 	dataDir := ensureDataDir()
 	return filepath.Join(dataDir, "instances", serverID)
-}
-
-// DeleteServer removes the server from DB, Local Disk, and Cloud
-func (a *App) DeleteServer(serverID string, username string) string {
-	collection := DB.Client.Database("mc_roam").Collection("servers")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// 1. Fetch Server to check ownership
-	var serverDoc ServerGroup
-	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&serverDoc)
-	if err != nil {
-		return "Error: Server not found."
-	}
-
-	// 2. SECURITY CHECK (The Fix)
-	// We check 'OwnerID' because that is what is stored in your MongoDB
-	if serverDoc.OwnerID != username {
-		return "Error: Only the server owner can delete this server."
-	}
-
-	// 3. Safety Check: Is it running?
-	if serverDoc.Lock.IsRunning {
-		return "Error: Stop the server before deleting it."
-	}
-
-	// 4. Delete from Database
-	_, err = collection.DeleteOne(ctx, bson.M{"_id": serverID})
-	if err != nil {
-		return "Error: Failed to delete from DB."
-	}
-
-	// 5. Delete Local Files
-	localPath := a.getInstancePath(serverID)
-	err = os.RemoveAll(localPath)
-	if err != nil {
-		a.Log("⚠️ Warning: Could not fully delete local files: " + err.Error())
-	} else {
-		a.Log("🗑️ Deleted local files.")
-	}
-
-	// 6. Delete Cloud Files (Background)
-	go func() {
-		// Matches the folder name format used in your rclone sync
-		err := a.PurgeRemote("server-" + serverID)
-		if err != nil {
-			a.Log("⚠️ Failed to delete cloud files: " + err.Error())
-		} else {
-			a.Log("🔥 Deleted cloud backup.")
-		}
-	}()
-
-	return "Success"
 }
 
 // ============================================
