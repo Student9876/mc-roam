@@ -3,10 +3,15 @@
 <div align="center">
   <img src="build/appicon.png" alt="MC Roam Logo" width="200"/>
   <br/>
-  <b>Cloud-Synced Minecraft Server Manager</b>
+  <h3>Cloud-Synced Minecraft Server Manager</h3>
   <br/>
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-  [![Build](https://github.com/Student9876/mc-roam/actions/workflows/build.yml/badge.svg)](https://github.com/Student9876/mc-roam/actions)
+  
+  <a href="https://opensource.org/licenses/MIT">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"/>
+  </a>
+  <a href="https://github.com/Student9876/mc-roam/actions">
+    <img src="https://github.com/Student9876/mc-roam/actions/workflows/build.yml/badge.svg" alt="Build Status"/>
+  </a>
 </div>
 
 ---
