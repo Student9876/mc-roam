@@ -37,7 +37,7 @@ jobs:
           wails build -ldflags "-X 'mc-roam/backend.MongoDBURI=${{ secrets.MONGODB_URI }}' -X 'mc-roam/backend.GoogleClientID=${{ secrets.GOOGLE_CLIENT_ID }}' -X 'mc-roam/backend.GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}'"
 
       - name: Archive build
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mc-roam-${{ matrix.os }}
           path: build/bin/
@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Get latest tag
         id: get_tag
