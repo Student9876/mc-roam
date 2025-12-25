@@ -1,67 +1,78 @@
-name: Build MC Roam
+name: Build and Release
 
 on:
   push:
-    branches: [ main ]
-    tags:
-      - 'v*'
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+    branches: [main]
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
-    
+  build-and-release:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-    - name: Setup Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.21'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-    - name: Install Wails
-      run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-    - name: Install frontend dependencies
-      run: |
-        cd frontend
-        npm install
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm install
+          cd ..
 
-    - name: Build application with embedded credentials
-      run: |
-        wails build -ldflags "-X 'mc-roam/backend.MongoDBURI=${{ secrets.MONGODB_URI }}' -X 'mc-roam/backend.GoogleClientID=${{ secrets.GOOGLE_CLIENT_ID }}' -X 'mc-roam/backend.GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}'"
-      shell: bash
+      - name: Build (Wails)
+        run: |
+          wails build -ldflags "-X 'mc-roam/backend.MongoDBURI=${{ secrets.MONGODB_URI }}' -X 'mc-roam/backend.GoogleClientID=${{ secrets.GOOGLE_CLIENT_ID }}' -X 'mc-roam/backend.GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}'"
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: mc-roam-windows
-        path: build/bin/mc-roam.exe
+      - name: Archive build
+        uses: actions/upload-artifact@v3
+        with:
+          name: mc-roam-${{ matrix.os }}
+          path: build/bin/
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build-windows
+    needs: build-and-release
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: mc-roam-windows
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
 
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: mc-roam.exe
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get latest tag
+        id: get_tag
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 || echo "v0.0.0")
+          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
+
+      - name: Bump patch version
+        id: bump_version
+        run: |
+          tag_without_v="${{ env.latest_tag }}"
+          tag_without_v="${tag_without_v#v}"
+          IFS='.' read -r -a parts <<< "$tag_without_v"
+          major=${parts[0]:-0}
+          minor=${parts[1]:-0}
+          patch=${parts[2]:-0}
+          new_patch=$((patch+1))
+          new_tag="v${major}.${minor}.${new_patch}"
+          echo "new_tag=$new_tag" >> $GITHUB_ENV
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.new_tag }}
+          name: "Continuous Release ${{ env.new_tag }}"
+          files: |
+            mc-roam-ubuntu-latest/**
+            mc-roam-windows-latest/**
