@@ -3,6 +3,10 @@ name: Build and Release
 on:
   push:
     branches: [main]
+  workflow_dispatch: # Allows you to run this manually from GitHub UI
+
+permissions:
+  contents: write # REQUIRED: Allows the release job to push tags/releases
 
 jobs:
   build-and-release:
@@ -10,8 +14,21 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
+    
+    # Force bash for consistency across Windows/Linux to handle quoting correctly
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - uses: actions/checkout@v3
+
+      # 1. Install Linux Dependencies (Wails won't build without these)
+      - name: Install Linux Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev build-essential pkg-config
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -32,9 +49,19 @@ jobs:
           npm install
           cd ..
 
+      # 2. Build with specific shell handling for flags
       - name: Build (Wails)
         run: |
           wails build -ldflags "-X 'mc-roam/backend.MongoDBURI=${{ secrets.MONGODB_URI }}' -X 'mc-roam/backend.GoogleClientID=${{ secrets.GOOGLE_CLIENT_ID }}' -X 'mc-roam/backend.GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}'"
+
+      # 3. Rename Binary (Optional but helpful for releases)
+      - name: Rename Windows Binary
+        if: runner.os == 'Windows'
+        run: mv build/bin/mc-roam.exe build/bin/mc-roam-windows.exe
+
+      - name: Rename Linux Binary
+        if: runner.os == 'Linux'
+        run: mv build/bin/mc-roam build/bin/mc-roam-linux
 
       - name: Archive build
         uses: actions/upload-artifact@v4
@@ -46,33 +73,44 @@ jobs:
     needs: build-and-release
     runs-on: ubuntu-latest
     steps:
+      # 4. Fetch all history so 'git describe' works
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
-      - name: Get latest tag
-        id: get_tag
-        run: |
-          latest_tag=$(git describe --tags --abbrev=0 || echo "v0.0.0")
-          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
-
-      - name: Bump patch version
+      - name: Get latest tag and calculate next
         id: bump_version
         run: |
-          tag_without_v="${{ env.latest_tag }}"
-          tag_without_v="${tag_without_v#v}"
+          # Safe fallback if no tags exist yet
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Current tag: $latest_tag"
+          
+          # Remove 'v'
+          tag_without_v="${latest_tag#v}"
+          
           IFS='.' read -r -a parts <<< "$tag_without_v"
           major=${parts[0]:-0}
           minor=${parts[1]:-0}
           patch=${parts[2]:-0}
+          
           new_patch=$((patch+1))
           new_tag="v${major}.${minor}.${new_patch}"
+          
+          echo "Next tag: $new_tag"
           echo "new_tag=$new_tag" >> $GITHUB_ENV
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.new_tag }}
-          name: "Continuous Release ${{ env.new_tag }}"
+          name: "Release ${{ env.new_tag }}"
           files: |
-            mc-roam-ubuntu-latest/**
-            mc-roam-windows-latest/**
+            artifacts/mc-roam-ubuntu-latest/*
+            artifacts/mc-roam-windows-latest/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
