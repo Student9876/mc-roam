@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -82,7 +81,7 @@ func (a *App) RunSync(direction SyncDirection, remotePath string, localPath stri
 	}
 
 	cmd := exec.Command(rcloneBin, args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	prepareCommand(cmd)
 
 	// --- FIX 3: Use non-blocking pipes ---
 	stdout, err := cmd.StdoutPipe()
@@ -214,7 +213,7 @@ func (a *App) PurgeRemote(remotePath string) error {
 	}
 
 	cmd := exec.Command(getToolPath("rclone.exe"), args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	prepareCommand(cmd)
 
 	// We don't need to stream logs for this, just run it
 	return cmd.Run()

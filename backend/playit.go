@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -143,7 +142,7 @@ func (a *App) StopTunnel() error {
 
 	// Kill all playit.exe processes
 	cmd := exec.Command("taskkill", "/F", "/IM", "playit.exe")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	prepareCommand(cmd)
 
 	if err := cmd.Run(); err != nil {
 		// Process might not be running, which is fine
