@@ -2,27 +2,67 @@
 
 <div align="center">
   <img src="build/appicon.png" alt="MC Roam Logo" width="200"/>
-  
-  **Cloud-Synced Multiplayer Minecraft Server Manager**
-  
+  <br/>
+  <b>Cloud-Synced Multiplayer Minecraft Server Manager</b>
+  <br/>
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
   [![Build](https://github.com/Student9876/mc-roam/actions/workflows/build.yml/badge.svg)](https://github.com/Student9876/mc-roam/actions)
 </div>
 
-## Overview
+---
 
-MC Roam is a powerful desktop application that lets you create, manage, and play Minecraft servers with your friends using cloud storage synchronization. Share servers without port forwarding, play from anywhere, and keep your worlds safe in the cloud.
 
-### Key Features
+## What is MC Roam?
 
-- **Cloud Sync** - Store server data on Google Drive/OneDrive and sync across machines
-- **Multi-Player Hosting** - Anyone in your group can host the server
-- **Server Versions** - Support for Vanilla, Paper, and custom server types
-- **Real-Time World Settings** - Modify game rules while server is running
-- **Player Management** - Op, ban, kick, teleport, and manage players easily
-- **Admin System** - Assign trusted members admin privileges
-- **Public Tunneling** - Optional Playit.gg integration for public access
-- **Built-in Terminal** - Monitor server logs in real-time
+## Index
+
+- [Key Features](#key-features)
+- [Who is it for?](#who-is-it-for)
+- [Basic Installation](#installation)
+- [Usage (Advanced/Developers)](#usage-advanceddevelopers)
+- [Building from Source](#building-from-source)
+- [What Can You Do?](#what-can-you-do)
+- [Project Structure](#project-structure)
+- [Technologies Used](#technologies-used)
+- [Contributing](#contributing)
+- [Security](#security)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
+- [Support](#support)
+
+
+**MC Roam** is a desktop application that revolutionizes Minecraft server hosting for friends and communities.
+
+> **Your server, your hardware, your rules.**
+> 
+> **MC Roam runs directly on your PC—no online server RAM limitations, no hidden costs.**
+> Host, manage, and play Minecraft servers from anywhere, with seamless cloud sync and zero port forwarding.
+
+- **No more server headaches:** Anyone in your server group can host, and your world is always up-to-date.
+- **Cloud-powered:** All server data is synced via Google Drive, OneDrive, or any Rclone-compatible storage.
+- **Admin made easy:** Assign trusted admins, manage players, and tweak settings in real time.
+
+---
+
+## Key Features
+
+* Cloud Sync: Store and sync your Minecraft server data across devices and hosts.
+* Multi-Host: Any member of the server group can start the server—no need to keep one PC always online.
+* Easy Player Management: OP, ban, kick, whitelist, and more, all from a modern UI.
+* Admin System: Owners can promote admins for shared management.
+* No Port Forwarding: Public tunneling via Playit.gg—play with friends, no router setup.
+* Real-Time Settings: Change world rules and properties while the server is running.
+* Built-in Terminal: View logs and send console commands directly from the app.
+
+---
+
+## Who is it for?
+
+- **Friends who want to share a Minecraft world, without any cloud service limitation.**
+- **Groups who want easy, secure, and portable server management.**
+- **Anyone who wants to host Minecraft servers without any resource limitaion of online services as it runs on your PC.**
+
+---
 
 ## Installation
 
@@ -34,25 +74,31 @@ MC Roam is a powerful desktop application that lets you create, manage, and play
 ### Quick Start
 
 1. **Download** the latest release from [Releases](https://github.com/Student9876/mc-roam/releases)
-
 2. **Run the Application**
    - Double-click `mc-roam.exe`
-   - Create an account (no configuration needed!)
-   - Authorize your cloud storage (first time only)
-   - Create or join a server!
+   - Create an account (no config needed!)
+   - Authorize your cloud storage
+   - Create or join a server
 
-> **Note:** Database and Google Drive integration are provided by the application. No additional setup required!
+> **Note:** The release biuld is integrated with owners database. So just connect your playit.gg account and play.
 
-## Building from Source
+## Usage (Advanced/Developers)
 
-### Requirements
+**Want to build MC Roam yourself, use your own MongoDB/Google Cloud, or contribute?**
+
+- See the [Building from Source](#building-from-source) section below.
+- You can configure your own MongoDB, Google OAuth, and Rclone settings via a `.env` file.
+- All advanced configuration and developer instructions are in the [docs/](docs/) folder.
+
+### Building from Source
+
+**Requirements:**
 
 - [Go 1.21+](https://go.dev/dl/)
 - [Node.js 20+](https://nodejs.org/)
 - [Wails v2](https://wails.io/docs/gettingstarted/installation)
-- Python 3.x (for icon generation)
 
-### Build Steps
+**Build Steps:**
 
 ```bash
 # Clone repository
@@ -68,39 +114,24 @@ npm install
 cd ..
 
 # Build
-wails build
+wails build -ldflags "-X 'mc-roam/backend.MongoDBURI=YOUR_MONGODB_URI' -X 'mc-roam/backend.GoogleClientID=YOUR_GOOGLE_CLIENT_ID' -X 'mc-roam/backend.GoogleClientSecret=YOUR_GOOGLE_CLIENT_SECRET'"
+```
+
+This command builds the MC Roam application and injects your custom environment variables directly into the binary using Go's `-ldflags` option:
+
+- `YOUR_MONGODB_URI`: Replace with your MongoDB connection string (e.g., from MongoDB Atlas).
+- `YOUR_GOOGLE_CLIENT_ID`: Replace with your Google OAuth client ID.
+- `YOUR_GOOGLE_CLIENT_SECRET`: Replace with your Google OAuth client secret.
+
+By passing these values at build time, you avoid the need for a separate `.env` file and ensure the app is configured with your credentials out of the box. Never commit real credentials to your repository.
 
 # Output will be in build/bin/mc-roam.exe
-```
 
 > **For Developers:** If you need to override default services (MongoDB, Google OAuth), create a `.env` file with your own credentials. See `.env.example` for details.
 
-## Configuration
+---
 
-### Cloud Storage Setup
-
-1. Go to **Settings** in the app
-2. Click **Setup Public Access** (optional)
-3. Authorize Rclone with your cloud provider
-4. Import configuration
-
-## Usage
-
-### Creating a Server
-
-1. Click **Create Server**
-2. Enter server name
-3. Select Minecraft version (Vanilla/Paper)
-4. Authorize cloud storage
-5. Share the invite code with friends
-
-### Joining a Server
-
-1. Click **Join Server**
-2. Enter the invite code
-3. Wait for host to start the server
-
-### Admin Features
+### What Can You Do?
 
 **Server owners can:**
 - Assign admin privileges to trusted members
@@ -110,7 +141,7 @@ wails build
 **Admins can:**
 - Modify server properties
 - Change world settings
-- Manage players (op, ban, kick, teleport)
+- Manage players (op, ban, kick, whitelist)
 - Send console commands
 
 **Regular members can:**
@@ -139,8 +170,7 @@ mc-roam/
 
 ## Technologies Used
 
-- **Frontend**: React, Vite
-- **Backend**: Go, Wails v2
+- **Wails v2**: Modern Go + Vite + React desktop app framework
 - **Database**: MongoDB
 - **Cloud Sync**: Rclone
 - **Tunneling**: Playit.gg
@@ -161,22 +191,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - MongoDB credentials are environment-based
 - Rclone configs are stored per-server in database
 - Passwords are bcrypt-hashed
-
-## Troubleshooting
-
-### "Error: Could not connect to MongoDB"
-- Check your `MONGODB_URI` in `.env`
-- Ensure MongoDB Atlas allows connections from your IP
-
-### "Playit tunnel failed"
-- Check firewall settings
-- Verify internet connection
-- Try re-importing Playit configuration
-
-### "Sync failed"
-- Ensure Rclone is properly configured
-- Check cloud storage permissions
-- Verify internet connection
 
 ## License
 
