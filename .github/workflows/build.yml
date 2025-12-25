@@ -52,7 +52,7 @@ jobs:
       # 2. Build with specific shell handling for flags
       - name: Build (Wails)
         run: |
-          wails build -ldflags "-X 'mc-roam/backend.MongoDBURI=${{ secrets.MONGODB_URI }}' -X 'mc-roam/backend.GoogleClientID=${{ secrets.GOOGLE_CLIENT_ID }}' -X 'mc-roam/backend.GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}'"
+          wails build -tags webkit2_41 -ldflags "-X 'mc-roam/backend.MongoDBURI=${{ secrets.MONGODB_URI }}' -X 'mc-roam/backend.GoogleClientID=${{ secrets.GOOGLE_CLIENT_ID }}' -X 'mc-roam/backend.GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}'"
 
       # 3. Rename Binary (Optional but helpful for releases)
       - name: Rename Windows Binary
