@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   build-and-release:
+    if: contains(github.event.head_commit.message, '[release]')
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -70,6 +71,7 @@ jobs:
           path: build/bin/
 
   release:
+    if: contains(github.event.head_commit.message, '[release]')
     needs: build-and-release
     runs-on: ubuntu-latest
     steps:
