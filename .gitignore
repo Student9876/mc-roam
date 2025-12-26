@@ -31,3 +31,6 @@ npm-debug.log*
 
 # MongoDB
 mc_roam_data/
+
+
+.exe 
