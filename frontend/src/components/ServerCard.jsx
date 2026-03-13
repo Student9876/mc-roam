@@ -87,7 +87,9 @@ const ServerCard = ({
                 <span
                   className={`inline-block size-2 rounded-full ${isRunning ? 'bg-[var(--color-accent-green3)] shadow-[0_0_0_3px_rgba(74,222,128,0.15)]' : 'bg-destructive/90 shadow-[0_0_0_3px_rgba(239,68,68,0.15)]'}`}
                 />
-                <span className={isRunning ? 'text-[var(--color-accent-green3)]' : 'text-destructive'}>
+                <span
+                  className={isRunning ? 'text-[var(--color-accent-green3)]' : 'text-destructive'}
+                >
                   {isRunning ? 'Online' : 'Offline'}
                 </span>
               </div>
