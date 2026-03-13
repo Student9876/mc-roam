@@ -64,31 +64,35 @@ const ServerCard = ({
 
         <CardContent className="p-4 flex flex-col gap-3">
           {/* TOP ROW */}
-          <div className="flex justify-between items-start gap-2">
+          <div className="flex justify-between items-start gap-3">
             <div className="min-w-0">
               <h3 className="text-base font-bold text-foreground mb-1 break-words text-left leading-tight">
                 {name}
               </h3>
-              <div className="flex gap-1.5 flex-wrap">
-                <Badge variant="outline" className="text-[0.6rem] py-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge variant="outline" className="text-[0.6rem] py-0 h-5">
                   {owner === currentUser ? 'You' : owner}
                 </Badge>
                 {server.type && server.version && (
                   <Badge
                     variant="secondary"
-                    className="text-[0.6rem] py-0 text-[var(--color-accent-green3)]"
+                    className="text-[0.6rem] py-0 h-5 text-[var(--color-accent-green3)]"
                   >
                     {server.type} {server.version}
                   </Badge>
                 )}
-                {isRunning && (
-                  <Badge variant="success" className="text-[0.6rem] py-0">
-                    ONLINE
-                  </Badge>
-                )}
+              </div>
+
+              <div className="mt-2 flex items-center gap-2 h-5 text-[0.65rem] uppercase tracking-wide font-semibold">
+                <span
+                  className={`inline-block size-2 rounded-full ${isRunning ? 'bg-[var(--color-accent-green3)] shadow-[0_0_0_3px_rgba(74,222,128,0.15)]' : 'bg-destructive/90 shadow-[0_0_0_3px_rgba(239,68,68,0.15)]'}`}
+                />
+                <span className={isRunning ? 'text-[var(--color-accent-green3)]' : 'text-destructive'}>
+                  {isRunning ? 'Online' : 'Offline'}
+                </span>
               </div>
             </div>
-            <div className="flex gap-1 shrink-0">
+            <div className="flex gap-1 shrink-0 pt-0.5">
               {isAdmin && (
                 <Tooltip>
                   <TooltipTrigger asChild>
