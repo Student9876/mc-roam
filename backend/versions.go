@@ -2,12 +2,13 @@ package backend
 
 import (
 	"context"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // GetVersions returns all available versions for the dropdown

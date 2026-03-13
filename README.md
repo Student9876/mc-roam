@@ -83,7 +83,7 @@
     - Authorize your cloud storage
     - Create or join a server
 
-> **Note:** The release biuld is integrated with owners database. So just connect your playit.gg account and play.
+> **Note:** The release biuld is integrated with owners database and google cloud informations to access google drive. So just connect your playit.gg account and play.
 
 ## Usage (Advanced/Developers)
 

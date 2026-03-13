@@ -3,10 +3,11 @@ package backend
 import (
 	"context"
 	"fmt"
-	"go.mongodb.org/mongo-driver/bson"
 	"os"
 	"path/filepath"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // CreateServer creates a new server group (UPDATED)
