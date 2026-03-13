@@ -1,152 +1,150 @@
 import React, { useState } from 'react';
-import './PlayerDetail.css';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sword, Wand2, Map, Eye, Skull, Heart, UtensilsCrossed, Apple, ArrowLeft, Navigation, MapPin, Users, User } from 'lucide-react';
 
 export default function PlayerDetail({ player, knownPlayers, onBack, onAction }) {
     const [tpCoords, setTpCoords] = useState({ x: 0, y: 100, z: 0 });
     const [targetPlayer, setTargetPlayer] = useState("");
 
-    // Filter out the current player from the list
     const otherPlayers = knownPlayers.filter(p => p.name !== player.name);
 
     return (
-        <div className="player-detail-container">
+        <div className="h-full flex flex-col">
             {/* HEADER */}
-            <div className="player-detail-header">
-                <button onClick={onBack} className="player-detail-back-btn">← Back</button>
-                <div className="player-detail-header-info">
-                    <img
-                        src={`https://crafatar.com/avatars/${player.uuid || player.name}?size=48&overlay`}
-                        alt="Skin"
-                        className="player-detail-avatar"
-                    />
-                    <div>
-                        <h2 className="player-detail-name">{player.name}</h2>
-                        <div className="player-detail-uuid">{player.uuid}</div>
+            <div className="px-5 py-4 border-b border-border flex items-center gap-4 bg-card/50 shrink-0">
+                <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground hover:text-foreground gap-1.5 shrink-0">
+                    <ArrowLeft className="size-3.5" /> Back
+                </Button>
+                <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="w-10 h-10 rounded-lg shrink-0 ring-1 ring-border">
+                        <AvatarImage src={`https://crafatar.com/avatars/${player.uuid || player.name}?size=40&overlay`} />
+                        <AvatarFallback className="rounded-lg bg-muted"><User className="size-5 text-muted-foreground" /></AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                        <h2 className="text-foreground text-base font-bold leading-tight truncate">{player.name}</h2>
+                        <div className="text-[0.62rem] font-mono text-muted-foreground/50 truncate">{player.uuid}</div>
                     </div>
                 </div>
             </div>
 
-            <div className="player-detail-grid player-detail-scroll">
-
-                {/* LEFT COL: STATUS */}
-                <div className="player-detail-col">
+            <div className="grid grid-cols-2 gap-4 p-4 overflow-y-auto flex-1">
+                {/* LEFT COL */}
+                <div className="flex flex-col gap-4">
 
                     {/* GAMEMODE */}
-                    <div className="player-detail-panel">
-                        <div className="player-detail-panel-title">Gamemode</div>
-                        <div className="player-detail-gm-grid">
-                            <ModeBtn icon="⚔️" label="Survival" onClick={() => onAction("gamemode_survival", player.name)} />
-                            <ModeBtn icon="✨" label="Creative" onClick={() => onAction("gamemode_creative", player.name)} />
-                            <ModeBtn icon="🗺️" label="Adventure" onClick={() => onAction("gamemode_adventure", player.name)} />
-                            <ModeBtn icon="👻" label="Spectator" onClick={() => onAction("gamemode_spectator", player.name)} />
+                    <Panel title="Gamemode">
+                        <div className="grid grid-cols-2 gap-2">
+                            <ModeBtn icon={<Sword className="size-4" />} label="Survival" onClick={() => onAction("gamemode_survival", player.name)} />
+                            <ModeBtn icon={<Wand2 className="size-4" />} label="Creative" onClick={() => onAction("gamemode_creative", player.name)} />
+                            <ModeBtn icon={<Map className="size-4" />} label="Adventure" onClick={() => onAction("gamemode_adventure", player.name)} />
+                            <ModeBtn icon={<Eye className="size-4" />} label="Spectator" onClick={() => onAction("gamemode_spectator", player.name)} />
                         </div>
-                    </div>
+                    </Panel>
 
-                    {/* STATUS ACTIONS */}
-                    <div className="player-detail-panel">
-                        <div className="player-detail-panel-title">Vitals</div>
-                        <div className="player-detail-action-grid">
-                            <ActionButton label="💀 Kill" color="#ef4444" onClick={() => onAction("kill", player.name)} />
-                            <ActionButton label="💖 Heal" color="#10b981" onClick={() => onAction("heal", player.name)} />
-                            <ActionButton label="🍖 Starve" color="#f97316" onClick={() => onAction("starve", player.name)} />
-                            <ActionButton label="🍗 Feed" color="#10b981" onClick={() => onAction("feed", player.name)} />
+                    {/* VITALS */}
+                    <Panel title="Vitals">
+                        <div className="grid grid-cols-2 gap-2">
+                            <ActionButton icon={<Skull className="size-3.5" />} label="Kill" cls="bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/25" onClick={() => onAction("kill", player.name)} />
+                            <ActionButton icon={<Heart className="size-3.5" />} label="Heal" cls="bg-[var(--color-accent-green4)]/15 text-[var(--color-accent-green4)] border-[var(--color-accent-green4)]/30 hover:bg-[var(--color-accent-green4)]/25" onClick={() => onAction("heal", player.name)} />
+                            <ActionButton icon={<UtensilsCrossed className="size-3.5" />} label="Starve" cls="bg-[var(--color-accent-orange)]/15 text-[var(--color-accent-orange)] border-[var(--color-accent-orange)]/30 hover:bg-[var(--color-accent-orange)]/25" onClick={() => onAction("starve", player.name)} />
+                            <ActionButton icon={<Apple className="size-3.5" />} label="Feed" cls="bg-[var(--color-accent-green4)]/15 text-[var(--color-accent-green4)] border-[var(--color-accent-green4)]/30 hover:bg-[var(--color-accent-green4)]/25" onClick={() => onAction("feed", player.name)} />
                         </div>
-                    </div>
-
-                    {/* INVENTORY PLACEHOLDER */}
-                    <div className="player-detail-panel">
-                        <div className="player-detail-panel-title">Inventory</div>
-                        <div className="player-detail-inventory-grid">
-                            {Array.from({ length: 27 }).map((_, i) => <div key={i} className="player-detail-slot">?</div>)}
-                        </div>
-                        <div className="player-detail-inventory-grid-hotbar">
-                            {Array.from({ length: 9 }).map((_, i) => <div key={i} className="player-detail-slot">?</div>)}
-                        </div>
-                    </div>
+                    </Panel>
                 </div>
 
-                {/* RIGHT COL: TELEPORT */}
-                <div className="player-detail-col">
+                {/* RIGHT COL */}
+                <div className="flex flex-col gap-4">
 
-                    {/* TELEPORTATION PANEL */}
-                    <div className="player-detail-panel">
-                        <div className="player-detail-panel-title">Teleport</div>
+                    {/* TELEPORT */}
+                    <Panel title="Teleport">
+                        <div className="flex flex-col gap-2.5">
 
-                        {/* 1. To Spawn */}
-                        <div className="player-detail-tp-section">
-                            <button className="player-detail-tp-btn" onClick={() => onAction("teleport_spawn", player.name)}>
-                                🔮 Warp to Spawn (0, 100, 0)
-                            </button>
-                        </div>
-
-                        {/* 2. To Coordinates */}
-                        <div className="player-detail-tp-coords-box">
-                            <div className="player-detail-tp-label">To Coordinates</div>
-                            <div className="player-detail-coords-input-group">
-                                <input type="number" placeholder="X" value={tpCoords.x} onChange={e => setTpCoords({ ...tpCoords, x: e.target.value })} className="player-detail-coord-input" />
-                                <input type="number" placeholder="Y" value={tpCoords.y} onChange={e => setTpCoords({ ...tpCoords, y: e.target.value })} className="player-detail-coord-input" />
-                                <input type="number" placeholder="Z" value={tpCoords.z} onChange={e => setTpCoords({ ...tpCoords, z: e.target.value })} className="player-detail-coord-input" />
-                            </div>
-                            <button
-                                className="player-detail-mini-btn"
-                                onClick={() => onAction("teleport_coords", player.name, `${tpCoords.x} ${tpCoords.y} ${tpCoords.z}`)}
+                            {/* Warp to Spawn */}
+                            <Button
+                                variant="outline"
+                                className="w-full justify-start gap-2.5 border-[var(--color-accent-blue3)]/40 text-[var(--color-accent-blue2)] bg-[var(--color-accent-blue3)]/10 hover:bg-[var(--color-accent-blue3)]/20 hover:text-[var(--color-accent-blue2)]"
+                                onClick={() => onAction("teleport_spawn", player.name)}
                             >
-                                Go →
-                            </button>
-                        </div>
+                                <Navigation className="size-4 shrink-0" />
+                                Warp to Spawn
+                            </Button>
 
-                        {/* 3. To Another Player */}
-                        <div className="player-detail-tp-player-box">
-                            <div className="player-detail-tp-label">To Player</div>
-                            <div className="player-detail-player-select-group">
-                                <select
-                                    className="player-detail-select"
-                                    value={targetPlayer}
-                                    onChange={(e) => setTargetPlayer(e.target.value)}
-                                >
-                                    <option value="">Select a player...</option>
-                                    {otherPlayers.map(p => (
-                                        <option key={p.name} value={p.name}>{p.name}</option>
-                                    ))}
-                                </select>
-                                <button
-                                    className="player-detail-mini-btn"
-                                    disabled={!targetPlayer}
-                                    onClick={() => onAction("teleport_to_player", player.name, targetPlayer)}
-                                >
-                                    Go →
-                                </button>
+                            {/* To Coordinates */}
+                            <div className="bg-muted/30 rounded-lg p-3 border border-border/60 flex flex-col gap-2">
+                                <div className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                                    <MapPin className="size-3" /> Coordinates
+                                </div>
+                                <div className="flex gap-1.5">
+                                    <Input type="number" placeholder="X" value={tpCoords.x} onChange={e => setTpCoords({ ...tpCoords, x: e.target.value })} className="text-center px-1 h-8 text-xs" />
+                                    <Input type="number" placeholder="Y" value={tpCoords.y} onChange={e => setTpCoords({ ...tpCoords, y: e.target.value })} className="text-center px-1 h-8 text-xs" />
+                                    <Input type="number" placeholder="Z" value={tpCoords.z} onChange={e => setTpCoords({ ...tpCoords, z: e.target.value })} className="text-center px-1 h-8 text-xs" />
+                                </div>
+                                <Button size="sm" className="h-7 text-xs" onClick={() => onAction("teleport_coords", player.name, `${tpCoords.x} ${tpCoords.y} ${tpCoords.z}`)}>
+                                    Teleport &rarr;
+                                </Button>
+                            </div>
+
+                            {/* To Player */}
+                            <div className="bg-muted/30 rounded-lg p-3 border border-border/60 flex flex-col gap-2">
+                                <div className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                                    <Users className="size-3" /> To Player
+                                </div>
+                                <div className="flex gap-1.5">
+                                    <Select value={targetPlayer} onValueChange={setTargetPlayer}>
+                                        <SelectTrigger className="flex-1 h-8 text-xs">
+                                            <SelectValue placeholder="Select player..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {otherPlayers.map(p => (
+                                                <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Button size="sm" className="h-8 px-3 text-xs" disabled={!targetPlayer} onClick={() => onAction("teleport_to_player", player.name, targetPlayer)}>
+                                        Go &rarr;
+                                    </Button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </Panel>
                 </div>
             </div>
         </div>
     );
 }
 
-// Subcomponents
-function ModeBtn({ icon, label, onClick }) {
+function Panel({ title, children }) {
     return (
-        <button className="player-detail-mode-btn" onClick={onClick}>
-            <div className="player-detail-mode-icon">{icon}</div>
-            <div className="player-detail-mode-label">{label}</div>
-        </button>
-    )
+        <div className="bg-card rounded-xl p-4 border border-border">
+            <div className="text-foreground font-semibold mb-3 text-sm tracking-wide">{title}</div>
+            {children}
+        </div>
+    );
 }
 
-function ActionButton({ label, color, onClick }) {
+function ModeBtn({ icon, label, onClick }) {
+    return (
+        <Button
+            variant="secondary"
+            className="h-auto py-3 flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground"
+            onClick={onClick}
+        >
+            {icon}
+            <span className="text-[0.65rem] font-medium">{label}</span>
+        </Button>
+    );
+}
+
+function ActionButton({ icon, label, cls, onClick }) {
     return (
         <button
             onClick={onClick}
-            className="player-detail-action-btn"
-            style={{
-                background: `${color}20`,
-                color: color,
-                border: `1px solid ${color}40`
-            }}
+            className={`flex items-center gap-2 px-3 py-2.5 rounded-lg font-semibold cursor-pointer text-sm border transition-colors ${cls}`}
         >
-            {label}
+            {icon} {label}
         </button>
     );
 }

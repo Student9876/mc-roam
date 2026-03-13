@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react';
 import { GetAdmins, SetAdmin, RemoveAdmin } from '../../wailsjs/go/backend/App';
-import './AdminModal.css';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Shield, ShieldOff, ShieldCheck, UserPlus, Info, User } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AdminModal({ server, currentUser, onClose }) {
     const [admins, setAdmins] = useState([]);
     const [newAdminName, setNewAdminName] = useState('');
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState('');
 
     const isOwner = server.owner_id === currentUser || server.owner === currentUser;
 
-    // Load admins list on mount
     useEffect(() => {
         loadAdmins();
     }, [server.id]);
@@ -26,166 +30,139 @@ export default function AdminModal({ server, currentUser, onClose }) {
 
     const handleAddAdmin = async () => {
         if (!newAdminName.trim()) {
-            setMessage('Error: Please enter a username');
+            toast.warning('Please enter a username.');
             return;
         }
-
         setLoading(true);
-        setMessage('');
-
         try {
             const result = await SetAdmin(server.id, newAdminName.trim(), currentUser);
-
             if (result === 'Success') {
-                setMessage(`Success: ${newAdminName} is now an admin`);
+                toast.success(`${newAdminName} is now an admin.`);
                 setNewAdminName('');
                 await loadAdmins();
             } else {
-                setMessage(result);
+                toast.error(result);
             }
         } catch (err) {
-            setMessage('Error: Failed to add admin - ' + err);
+            toast.error('Failed to add admin: ' + err);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleRemoveAdmin = async (adminUsername) => {
-        // Extract username from "(Owner)" suffix if present
-        const username = adminUsername.replace(' (Owner)', '');
-
-        if (!confirm(`Remove ${username} from admin list?`)) {
-            return;
-        }
-
+    const handleRemoveAdmin = async (adminEntry) => {
+        const username = adminEntry.replace(' (Owner)', '');
         setLoading(true);
-        setMessage('');
-
         try {
             const result = await RemoveAdmin(server.id, username, currentUser);
-
             if (result === 'Success') {
-                setMessage(`Success: ${username} removed from admins`);
+                toast.success(`${username} removed from admins.`);
                 await loadAdmins();
             } else {
-                setMessage(result);
+                toast.error(result);
             }
         } catch (err) {
-            setMessage('Error: Failed to remove admin - ' + err);
+            toast.error('Failed to remove admin: ' + err);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="admin-modal-overlay" onClick={onClose}>
-            <div className="admin-modal-container" onClick={(e) => e.stopPropagation()}>
-                {/* Header */}
-                <div className="admin-modal-header">
-                    <div>
-                        <h2 className="admin-modal-title">Admin Management</h2>
-                        <div className="admin-modal-server-name">
-                            {server.name}
-                        </div>
-                    </div>
-                    <button onClick={onClose} className="admin-modal-close-btn">×</button>
-                </div>
+        <Dialog open onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-[520px] max-h-[80vh] flex flex-col p-0 gap-0 overflow-hidden">
+                <DialogHeader className="px-6 py-5 border-b border-border shrink-0">
+                    <DialogTitle className="flex items-center gap-2">
+                        <Shield className="size-4 text-primary" /> Admin Management
+                    </DialogTitle>
+                    <DialogDescription>{server.name}</DialogDescription>
+                </DialogHeader>
 
-                {/* Content */}
-                <div className="admin-modal-content admin-modal-scroll">
-                    {/* Info Box */}
-                    <div className="admin-modal-info-box">
-                        <strong>About Admin Permissions</strong>
-                        <p>
-                            Admins can modify server settings, world settings, and manage players.
-                            Only the server owner can assign or remove admins.
-                        </p>
-                    </div>
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                    <div className="px-6 py-5 flex flex-col gap-5">
 
-                    {/* Add Admin Section (Only for Owner) */}
-                    {isOwner && (
-                        <div className="admin-modal-section">
-                            <h3 className="admin-modal-section-title">Add New Admin</h3>
-                            <div className="admin-modal-add-admin-row">
-                                <input
-                                    type="text"
-                                    placeholder="Enter username..."
-                                    value={newAdminName}
-                                    onChange={(e) => setNewAdminName(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handleAddAdmin()}
-                                    className="admin-modal-input"
-                                    disabled={loading}
-                                />
-                                <button
-                                    onClick={handleAddAdmin}
-                                    className="admin-modal-add-btn"
-                                    disabled={loading}
-                                >
-                                    {loading ? '...' : 'Add'}
-                                </button>
+                        {/* Info Box */}
+                        <div className="flex gap-3 bg-primary/5 border border-primary/20 rounded-xl p-4 text-sm text-muted-foreground">
+                            <Info className="size-4 shrink-0 mt-0.5 text-primary" />
+                            <div>
+                                <strong className="text-foreground font-semibold">Admin Permissions</strong>
+                                <p className="mt-1 text-xs leading-relaxed">Admins can modify server settings, world settings, and manage players. Only the server owner can assign or remove admins.</p>
                             </div>
                         </div>
-                    )}
 
-                    {/* Message Display */}
-                    {message && (
-                        <div className="admin-modal-message">
-                            {message}
-                        </div>
-                    )}
-
-                    {/* Current Admins List */}
-                    <div className="admin-modal-section">
-                        <h3 className="admin-modal-section-title">Current Admins ({admins.length})</h3>
-                        <div className="admin-modal-admin-list">
-                            {admins.length === 0 ? (
-                                <div className="admin-modal-empty-state">
-                                    No admins assigned yet
+                        {/* Add Admin (Owner only) */}
+                        {isOwner && (
+                            <div>
+                                <h3 className="text-foreground text-sm font-semibold mb-3">Add New Admin</h3>
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="Enter username..."
+                                        value={newAdminName}
+                                        onChange={(e) => setNewAdminName(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleAddAdmin()}
+                                        disabled={loading}
+                                        className="flex-1"
+                                    />
+                                    <Button onClick={handleAddAdmin} disabled={loading || !newAdminName.trim()} className="gap-2 shrink-0">
+                                        <UserPlus className="size-4" />
+                                        {loading ? '...' : 'Add'}
+                                    </Button>
                                 </div>
-                            ) : (
-                                admins.map((admin, idx) => {
-                                    const isOwnerTag = admin.includes('(Owner)');
-                                    const username = admin.replace(' (Owner)', '');
+                            </div>
+                        )}
 
-                                    return (
-                                        <div key={idx} className="admin-modal-admin-item">
-                                            <div className="admin-modal-admin-info">
-                                                <span className="admin-modal-admin-icon">
-                                                    {isOwnerTag ? '★' : '•'}
-                                                </span>
-                                                <span className="admin-modal-admin-name">
-                                                    {username}
-                                                </span>
-                                                {isOwnerTag && (
-                                                    <span className="admin-modal-owner-badge">OWNER</span>
+                        {/* Admin List */}
+                        <div>
+                            <h3 className="text-foreground text-sm font-semibold mb-3">Current Admins ({admins.length})</h3>
+                            <div className="flex flex-col gap-2">
+                                {admins.length === 0 ? (
+                                    <div className="text-center py-10 text-muted-foreground text-sm italic">
+                                        No admins assigned yet
+                                    </div>
+                                ) : (
+                                    admins.map((admin, idx) => {
+                                        const isOwnerTag = admin.includes('(Owner)');
+                                        const username = admin.replace(' (Owner)', '');
+                                        return (
+                                            <div key={idx} className="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-3 hover:border-border/80 transition-colors">
+                                                <Avatar className="w-8 h-8 rounded-lg shrink-0">
+                                                    <AvatarImage src={`https://crafatar.com/avatars/${username}?size=32&overlay`} />
+                                                    <AvatarFallback className="rounded-lg bg-muted"><User className="size-4 text-muted-foreground" /></AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                    <span className="text-foreground font-semibold text-sm truncate">{username}</span>
+                                                    {isOwnerTag
+                                                        ? <Badge variant="secondary" className="shrink-0 gap-1 text-primary border-primary/30"><ShieldCheck className="size-3" />Owner</Badge>
+                                                        : <Badge variant="outline" className="shrink-0 gap-1 text-muted-foreground"><Shield className="size-3" />Admin</Badge>
+                                                    }
+                                                </div>
+                                                {isOwner && !isOwnerTag && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        disabled={loading}
+                                                        onClick={() => handleRemoveAdmin(admin)}
+                                                        className="gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                                                    >
+                                                        <ShieldOff className="size-3.5" />
+                                                        Remove
+                                                    </Button>
                                                 )}
                                             </div>
-
-                                            {/* Remove button (only for owner, and can't remove themselves) */}
-                                            {isOwner && !isOwnerTag && (
-                                                <button
-                                                    onClick={() => handleRemoveAdmin(admin)}
-                                                    className="admin-modal-remove-btn"
-                                                    disabled={loading}
-                                                >
-                                                    Remove
-                                                </button>
-                                            )}
-                                        </div>
-                                    );
-                                })
-                            )}
+                                        );
+                                    })
+                                )}
+                            </div>
                         </div>
+
+                        {isOwner && (
+                            <p className="text-center text-muted-foreground text-xs">
+                                Tip: Users must join the server before they can be made admins
+                            </p>
+                        )}
                     </div>
-
-                    {/* Member Hint */}
-                    {isOwner && (
-                        <div className="admin-modal-hint">
-                            Tip: Users must join the server before they can be made admins
-                        </div>
-                    )}
                 </div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }

@@ -54,6 +54,10 @@ export function GetAdmins(arg1) {
   return window['go']['backend']['App']['GetAdmins'](arg1);
 }
 
+export function GetLocalWorldSettings(arg1) {
+  return window['go']['backend']['App']['GetLocalWorldSettings'](arg1);
+}
+
 export function GetMyServers(arg1) {
   return window['go']['backend']['App']['GetMyServers'](arg1);
 }
@@ -72,6 +76,10 @@ export function GetVersions() {
 
 export function Greet(arg1) {
   return window['go']['backend']['App']['Greet'](arg1);
+}
+
+export function HasLocalServerFiles(arg1) {
+  return window['go']['backend']['App']['HasLocalServerFiles'](arg1);
 }
 
 export function ImportPlayitConfig(arg1) {

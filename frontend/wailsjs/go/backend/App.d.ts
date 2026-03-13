@@ -28,6 +28,8 @@ export function ForceSyncUp(arg1:string):Promise<string>;
 
 export function GetAdmins(arg1:string):Promise<Array<string>>;
 
+export function GetLocalWorldSettings(arg1:string):Promise<Record<string, any>>;
+
 export function GetMyServers(arg1:string):Promise<Array<backend.ServerGroup>>;
 
 export function GetPlayerLists(arg1:string):Promise<backend.PlayerLists>;
@@ -37,6 +39,8 @@ export function GetServerOptions(arg1:string):Promise<backend.ServerProps>;
 export function GetVersions():Promise<Array<backend.ServerVersion>>;
 
 export function Greet(arg1:string):Promise<string>;
+
+export function HasLocalServerFiles(arg1:string):Promise<boolean>;
 
 export function ImportPlayitConfig(arg1:string):Promise<string>;
 

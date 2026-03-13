@@ -1,5 +1,11 @@
-import { useState, useEffect } from 'react';
-import { SendConsoleCommand, SaveWorldSetting } from '../../wailsjs/go/backend/App';
+import { useEffect, useState } from 'react';
+import { GetLocalWorldSettings, HasLocalServerFiles, SendConsoleCommand, SaveWorldSetting } from '../../wailsjs/go/backend/App';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 // --- CONFIGURATION: MAPS UI TO COMMANDS ---
 const RULE_CATEGORIES = {
@@ -7,76 +13,46 @@ const RULE_CATEGORIES = {
         { id: "difficulty", label: "Difficulty", type: "select", options: ["peaceful", "easy", "normal", "hard"] },
     ],
     PLAYER: [
-        { id: "keepInventory", label: "Keep Inventory", type: "boolean" },
-        { id: "naturalRegeneration", label: "Natural Regeneration", type: "boolean" },
-        { id: "doImmediateRespawn", label: "Immediate Respawn", type: "boolean" },
-        { id: "forgiveDeadPlayers", label: "Forgive Dead Players", type: "boolean" },
-        { id: "showDeathMessages", label: "Show Death Messages", type: "boolean" },
-        { id: "disableElytraMovementCheck", label: "Disable Elytra Check", type: "boolean" },
+        { id: "keepInventory", label: "Keep Inventory", type: "boolean", default: false },
+        { id: "naturalRegeneration", label: "Natural Regeneration", type: "boolean", default: true },
+        { id: "doImmediateRespawn", label: "Immediate Respawn", type: "boolean", default: false },
+        { id: "forgiveDeadPlayers", label: "Forgive Dead Players", type: "boolean", default: true },
+        { id: "showDeathMessages", label: "Show Death Messages", type: "boolean", default: true },
+        { id: "disableElytraMovementCheck", label: "Disable Elytra Check", type: "boolean", default: false },
         { id: "playersSleepingPercentage", label: "Sleep % Needed", type: "integer", default: 100 },
         { id: "spawnRadius", label: "Spawn Radius", type: "integer", default: 10 },
     ],
     MOBS: [
-        { id: "mobGriefing", label: "Mob Griefing", type: "boolean" },
-        { id: "doMobSpawning", label: "Mob Spawning", type: "boolean" },
-        { id: "doMobLoot", label: "Mob Loot", type: "boolean" },
-        { id: "universalAnger", label: "Universal Anger", type: "boolean" },
-        { id: "disableRaids", label: "Disable Raids", type: "boolean" },
-        { id: "doPatrolSpawning", label: "Patrol Spawning", type: "boolean" },
-        { id: "doTraderSpawning", label: "Trader Spawning", type: "boolean" },
-        { id: "doInsomnia", label: "Phantoms (Insomnia)", type: "boolean" },
+        { id: "mobGriefing", label: "Mob Griefing", type: "boolean", default: true },
+        { id: "doMobSpawning", label: "Mob Spawning", type: "boolean", default: true },
+        { id: "doMobLoot", label: "Mob Loot", type: "boolean", default: true },
+        { id: "universalAnger", label: "Universal Anger", type: "boolean", default: false },
+        { id: "disableRaids", label: "Disable Raids", type: "boolean", default: false },
+        { id: "doPatrolSpawning", label: "Patrol Spawning", type: "boolean", default: true },
+        { id: "doTraderSpawning", label: "Trader Spawning", type: "boolean", default: true },
+        { id: "doInsomnia", label: "Phantoms (Insomnia)", type: "boolean", default: true },
         { id: "maxEntityCramming", label: "Max Entity Cramming", type: "integer", default: 24 },
     ],
     WORLD: [
-        { id: "doDaylightCycle", label: "Daylight Cycle", type: "boolean" },
-        { id: "doWeatherCycle", label: "Weather Cycle", type: "boolean" },
-        { id: "doFireTick", label: "Fire Spread", type: "boolean" },
+        { id: "doDaylightCycle", label: "Daylight Cycle", type: "boolean", default: true },
+        { id: "doWeatherCycle", label: "Weather Cycle", type: "boolean", default: true },
+        { id: "doFireTick", label: "Fire Spread", type: "boolean", default: true },
         { id: "randomTickSpeed", label: "Random Tick Speed", type: "integer", default: 3 },
-        { id: "doTileDrops", label: "Block Drops", type: "boolean" },
-        { id: "doEntityDrops", label: "Entity Drops", type: "boolean" },
-        { id: "commandBlockOutput", label: "Cmd Block Output", type: "boolean" },
+        { id: "doTileDrops", label: "Block Drops", type: "boolean", default: true },
+        { id: "doEntityDrops", label: "Entity Drops", type: "boolean", default: true },
+        { id: "commandBlockOutput", label: "Cmd Block Output", type: "boolean", default: true },
         { id: "maxCommandChainLength", label: "Max Cmd Chain", type: "integer", default: 65536 },
     ],
     DAMAGE: [
-        { id: "fallDamage", label: "Fall Damage", type: "boolean" },
-        { id: "fireDamage", label: "Fire Damage", type: "boolean" },
-        { id: "drowningDamage", label: "Drowning Damage", type: "boolean" },
-        { id: "freezeDamage", label: "Freeze Damage", type: "boolean" },
-        { id: "pvp", label: "PVP (Player vs Player)", type: "boolean" }, // Note: In vanilla this is server.properties, but some forks allow gamerule
+        { id: "fallDamage", label: "Fall Damage", type: "boolean", default: true },
+        { id: "fireDamage", label: "Fire Damage", type: "boolean", default: true },
+        { id: "drowningDamage", label: "Drowning Damage", type: "boolean", default: true },
+        { id: "freezeDamage", label: "Freeze Damage", type: "boolean", default: true },
+        { id: "pvp", label: "PVP (Player vs Player)", type: "boolean", default: true }, // Note: In vanilla this is server.properties, but some forks allow gamerule
     ]
 };
 
 export default function WorldModal({ server, currentUser, onClose }) {
-    // Add custom scrollbar styles
-    useEffect(() => {
-        const styleId = 'world-modal-scrollbar';
-        if (!document.getElementById(styleId)) {
-            const style = document.createElement('style');
-            style.id = styleId;
-            style.textContent = `
-                .world-modal-scroll::-webkit-scrollbar {
-                    width: 8px;
-                }
-                .world-modal-scroll::-webkit-scrollbar-track {
-                    background: #18181b;
-                    border-radius: 4px;
-                }
-                .world-modal-scroll::-webkit-scrollbar-thumb {
-                    background: #3f3f46;
-                    border-radius: 4px;
-                }
-                .world-modal-scroll::-webkit-scrollbar-thumb:hover {
-                    background: #52525b;
-                }
-            `;
-            document.head.appendChild(style);
-        }
-        return () => {
-            const styleEl = document.getElementById(styleId);
-            if (styleEl) styleEl.remove();
-        };
-    }, []);
-
     // 1. Load Initial State
     // We merge the server's saved settings with defaults to ensure UI isn't empty
     const savedSettings = server.world_settings || {};
@@ -86,16 +62,42 @@ export default function WorldModal({ server, currentUser, onClose }) {
         const state = {};
         Object.values(RULE_CATEGORIES).flat().forEach(rule => {
             if (savedSettings[rule.id] !== undefined) {
-                state[rule.id] = savedSettings[rule.id];
+                const savedValue = savedSettings[rule.id];
+                if (rule.type === 'boolean') {
+                    state[rule.id] =
+                        savedValue === true ||
+                        savedValue === 'true' ||
+                        savedValue === 1 ||
+                        savedValue === '1';
+                } else {
+                    state[rule.id] = savedValue;
+                }
             } else {
                 // Set Defaults if not found in DB
                 state[rule.id] = rule.type === 'boolean' ? (rule.default || false) : (rule.default || 0);
                 if(rule.id === 'difficulty') state[rule.id] = 'easy';
-                
-                // Specific Overrides for common rules usually ON by default
-                if(['doDaylightCycle', 'doWeatherCycle', 'doMobSpawning', 'mobGriefing', 'doTileDrops', 'naturalRegeneration', 'pvp'].includes(rule.id)) {
-                    if(savedSettings[rule.id] === undefined) state[rule.id] = true;
+            }
+        });
+        return state;
+    };
+
+    const buildStateFromSettings = (sourceSettings = {}) => {
+        const state = {};
+        Object.values(RULE_CATEGORIES).flat().forEach(rule => {
+            if (sourceSettings[rule.id] !== undefined) {
+                const savedValue = sourceSettings[rule.id];
+                if (rule.type === 'boolean') {
+                    state[rule.id] =
+                        savedValue === true ||
+                        savedValue === 'true' ||
+                        savedValue === 1 ||
+                        savedValue === '1';
+                } else {
+                    state[rule.id] = savedValue;
                 }
+            } else {
+                state[rule.id] = rule.type === 'boolean' ? (rule.default || false) : (rule.default || 0);
+                if (rule.id === 'difficulty') state[rule.id] = 'easy';
             }
         });
         return state;
@@ -103,155 +105,178 @@ export default function WorldModal({ server, currentUser, onClose }) {
 
     const [settings, setSettings] = useState(getInitialState());
     const [activeTab, setActiveTab] = useState("PLAYER"); // Default tab
+    const [hasLocalFiles, setHasLocalFiles] = useState(true);
+
+    const isSuccess = (result) => typeof result === 'string' && result.toLowerCase().startsWith('success');
+
+    useEffect(() => {
+        let ignore = false;
+
+        const hydrateFromLocal = async () => {
+            try {
+                const localExists = await HasLocalServerFiles(server.id);
+                if (ignore) return;
+                setHasLocalFiles(localExists);
+
+                if (!localExists) {
+                    setSettings(buildStateFromSettings(savedSettings));
+                    return;
+                }
+
+                const localSettings = await GetLocalWorldSettings(server.id);
+                if (ignore) return;
+                setSettings(buildStateFromSettings({ ...savedSettings, ...(localSettings || {}) }));
+            } catch {
+                if (ignore) return;
+                setHasLocalFiles(false);
+                setSettings(buildStateFromSettings(savedSettings));
+            }
+        };
+
+        hydrateFromLocal();
+
+        return () => {
+            ignore = true;
+        };
+    }, [currentUser, server.id]);
 
     // --- HANDLERS ---
 
     const handleToggle = async (id) => {
-        const newVal = !settings[id];
+        if (!hasLocalFiles) return;
+        const prevVal = settings[id];
+        const newVal = !prevVal;
         setSettings(prev => ({ ...prev, [id]: newVal })); // Optimistic Update
-        
-        // Command: /gamerule ruleName true/false
-        // Exception: PVP usually requires property change, but we'll try gamerule first or ignore if vanilla
-        if (id === 'pvp') {
-             // PVP is tricky in real-time on Vanilla. On Paper/Spigot, simply toggling variable isn't enough usually.
-             // We will try changing difficulty to peaceful and back to reset aggro if needed, 
-             // but strictly speaking 'pvp' is a server.property. 
-             // FOR NOW: We just save state. 
-             // To support Real-Time PVP, plugins are usually needed.
-        } else {
-            await SendConsoleCommand(server.id, currentUser, `gamerule ${id} ${newVal}`);
+
+        try {
+            if (id !== 'pvp') {
+                const cmdRes = await SendConsoleCommand(server.id, currentUser, `gamerule ${id} ${newVal}`);
+                if (!isSuccess(cmdRes)) throw new Error(cmdRes || 'Failed to run gamerule command');
+            }
+
+            const saveRes = await SaveWorldSetting(server.id, currentUser, id, newVal);
+            if (!isSuccess(saveRes)) throw new Error(saveRes || 'Failed to save world setting');
+        } catch (err) {
+            setSettings(prev => ({ ...prev, [id]: prevVal }));
+            toast.error(err?.message || 'Failed to update setting.');
         }
-        
-        await SaveWorldSetting(server.id, currentUser, id, newVal);
     };
 
     const handleSelect = async (id, val) => {
+        if (!hasLocalFiles) return;
+        const prevVal = settings[id];
         setSettings(prev => ({ ...prev, [id]: val }));
-        
-        if (id === 'difficulty') {
-            await SendConsoleCommand(server.id, currentUser, `difficulty ${val}`);
+
+        try {
+            if (id === 'difficulty') {
+                const cmdRes = await SendConsoleCommand(server.id, currentUser, `difficulty ${val}`);
+                if (!isSuccess(cmdRes)) throw new Error(cmdRes || 'Failed to run difficulty command');
+            }
+
+            const saveRes = await SaveWorldSetting(server.id, currentUser, id, val);
+            if (!isSuccess(saveRes)) throw new Error(saveRes || 'Failed to save world setting');
+        } catch (err) {
+            setSettings(prev => ({ ...prev, [id]: prevVal }));
+            toast.error(err?.message || 'Failed to update setting.');
         }
-        await SaveWorldSetting(server.id, currentUser, id, val);
     };
 
     const handleIntegerChange = async (id, val) => {
+        if (!hasLocalFiles) return;
         const num = parseInt(val);
         if (isNaN(num)) return;
-        
+        const prevVal = settings[id];
         setSettings(prev => ({ ...prev, [id]: num }));
-        await SendConsoleCommand(server.id, currentUser, `gamerule ${id} ${num}`);
-        await SaveWorldSetting(server.id, currentUser, id, num);
+
+        try {
+            const cmdRes = await SendConsoleCommand(server.id, currentUser, `gamerule ${id} ${num}`);
+            if (!isSuccess(cmdRes)) throw new Error(cmdRes || 'Failed to run gamerule command');
+
+            const saveRes = await SaveWorldSetting(server.id, currentUser, id, num);
+            if (!isSuccess(saveRes)) throw new Error(saveRes || 'Failed to save world setting');
+        } catch (err) {
+            setSettings(prev => ({ ...prev, [id]: prevVal }));
+            toast.error(err?.message || 'Failed to update setting.');
+        }
     };
 
     return (
-        <div style={styles.overlay} onClick={onClose}>
-            <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-                
-                {/* HEADER */}
-                <div style={styles.header}>
-                    <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                        <div>
-                            <h2 style={{ margin: 0, color: '#fff' }}>World Settings</h2>
-                            <div style={{fontSize:'0.8rem', color:'#aaa'}}>Real-time control center</div>
+        <Dialog open onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-[800px] h-[85vh] max-h-[700px] flex flex-col gap-0 p-0 overflow-hidden">
+                <DialogHeader className="px-6 py-4 border-b border-border bg-card/50 shrink-0">
+                    <DialogTitle>World Settings</DialogTitle>
+                    <DialogDescription>Real-time gamerule control center — {server.name}</DialogDescription>
+                </DialogHeader>
+
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 overflow-hidden gap-0">
+                    {!hasLocalFiles && (
+                        <div className="mx-6 mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                            Local server files were not found for this instance. World settings are read-only until the server files are installed locally.
                         </div>
-                    </div>
-                    <button onClick={onClose} style={styles.closeBtn}>×</button>
-                </div>
+                    )}
 
-                {/* TABS */}
-                <div style={styles.tabs}>
-                    {Object.keys(RULE_CATEGORIES).map(cat => (
-                        <button 
-                            key={cat}
-                            style={activeTab === cat ? styles.tabActive : styles.tab}
-                            onClick={() => setActiveTab(cat)}
-                        >
-                            {cat}
-                        </button>
-                    ))}
-                </div>
-
-                {/* CONTENT AREA */}
-                <div style={styles.content} className="world-modal-scroll">
-                    <div style={styles.grid}>
-                        {RULE_CATEGORIES[activeTab].map((rule) => (
-                            <div key={rule.id} style={styles.card}>
-                                <div style={styles.labelGroup}>
-                                    <div style={styles.label}>{rule.label}</div>
-                                    <div style={styles.code}>{rule.id}</div>
-                                </div>
-
-                                {/* RENDER BASED ON TYPE */}
-                                
-                                {rule.type === 'boolean' && (
-                                    <button 
-                                        onClick={() => handleToggle(rule.id)}
-                                        style={{
-                                            ...styles.toggleBtn, 
-                                            background: settings[rule.id] ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                                            color: settings[rule.id] ? '#10b981' : '#ef4444',
-                                            border: settings[rule.id] ? '1px solid #10b981' : '1px solid #ef4444'
-                                        }}
-                                    >
-                                        {settings[rule.id] ? "ON" : "OFF"}
-                                    </button>
-                                )}
-
-                                {rule.type === 'integer' && (
-                                    <div style={{display:'flex', alignItems:'center', gap:'5px'}}>
-                                        <input 
-                                            type="number" 
-                                            value={settings[rule.id]} 
-                                            // Update local state on change, send command on BLUR to avoid spam
-                                            onChange={(e) => setSettings({...settings, [rule.id]: e.target.value})} 
-                                            onBlur={(e) => handleIntegerChange(rule.id, e.target.value)}
-                                            style={styles.numInput}
-                                        />
-                                    </div>
-                                )}
-
-                                {rule.type === 'select' && (
-                                    <select 
-                                        value={settings[rule.id]} 
-                                        onChange={(e) => handleSelect(rule.id, e.target.value)}
-                                        style={styles.select}
-                                    >
-                                        {rule.options.map(opt => (
-                                            <option key={opt} value={opt}>{opt.toUpperCase()}</option>
-                                        ))}
-                                    </select>
-                                )}
-                            </div>
+                    <TabsList className="w-full rounded-none border-b border-border bg-background justify-start h-auto p-0 shrink-0">
+                        {Object.keys(RULE_CATEGORIES).map(cat => (
+                            <TabsTrigger
+                                key={cat}
+                                value={cat}
+                                className="flex-1 rounded-none py-3.5 text-sm data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary border-b-2 border-transparent -mb-px"
+                            >
+                                {cat}
+                            </TabsTrigger>
                         ))}
-                    </div>
-                </div>
+                    </TabsList>
 
-            </div>
-        </div>
+                    {Object.keys(RULE_CATEGORIES).map(cat => (
+                        <TabsContent key={cat} value={cat} className="flex-1 overflow-hidden mt-0">
+                            <div className="h-full overflow-y-auto">
+                                <div className="grid grid-cols-2 gap-3 p-6">
+                                    {RULE_CATEGORIES[cat].map((rule) => (
+                                        <div key={rule.id} className="bg-card px-4 py-3.5 rounded-lg flex justify-between items-center border border-border hover:border-muted-foreground/30 transition-colors">
+                                            <div>
+                                                <div className="text-sm text-foreground font-medium">{rule.label}</div>
+                                                <div className="text-xs text-muted-foreground font-mono mt-0.5">{rule.id}</div>
+                                            </div>
+
+                                            {rule.type === 'boolean' && (
+                                                <Switch
+                                                    checked={settings[rule.id]}
+                                                    disabled={!hasLocalFiles}
+                                                    onCheckedChange={() => handleToggle(rule.id)}
+                                                />
+                                            )}
+
+                                            {rule.type === 'integer' && (
+                                                <Input
+                                                    type="number"
+                                                    value={settings[rule.id]}
+                                                    disabled={!hasLocalFiles}
+                                                    onChange={(e) => setSettings({...settings, [rule.id]: e.target.value})}
+                                                    onBlur={(e) => handleIntegerChange(rule.id, e.target.value)}
+                                                    className="w-20 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                />
+                                            )}
+
+                                            {rule.type === 'select' && (
+                                                <Select value={settings[rule.id]} onValueChange={(v) => handleSelect(rule.id, v)} disabled={!hasLocalFiles}>
+                                                    <SelectTrigger className="w-32" disabled={!hasLocalFiles}>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {rule.options.map(opt => (
+                                                            <SelectItem key={opt} value={opt}>{opt.toUpperCase()}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </TabsContent>
+                    ))}
+                </Tabs>
+            </DialogContent>
+        </Dialog>
     );
 }
-
-const styles = {
-    overlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 3000, backdropFilter: "blur(5px)" },
-    modal: { background: "#18181b", width: "800px", height: "600px", borderRadius: "16px", border: "1px solid #27272a", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)" },
-    
-    header: { padding: "24px", borderBottom: "1px solid #27272a", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#202023" },
-    closeBtn: { background: "none", border: "none", color: "#71717a", fontSize: "2rem", cursor: "pointer", lineHeight: "1" },
-    
-    tabs: { display: "flex", borderBottom: "1px solid #27272a", background: "#18181b" },
-    tab: { flex: 1, padding: "16px", background: "transparent", border: "none", color: "#71717a", cursor: "pointer", fontWeight: "600", borderBottom: "2px solid transparent", transition: "all 0.2s" },
-    tabActive: { flex: 1, padding: "16px", background: "#27272a", border: "none", color: "#fab005", cursor: "pointer", fontWeight: "bold", borderBottom: "2px solid #fab005" },
-
-    content: { padding: "30px", overflowY: "auto", flex: 1, background: "#18181b", scrollbarWidth: "thin", scrollbarColor: "#3f3f46 #18181b" },
-    grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" },
-    
-    card: { background: "#27272a", padding: "16px", borderRadius: "8px", display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid #3f3f46" },
-    labelGroup: { display: "flex", flexDirection: "column" },
-    label: { fontSize: "0.95rem", color: "#e4e4e7", fontWeight: "500" },
-    code: { fontSize: "0.75rem", color: "#71717a", fontFamily: "monospace", marginTop: "2px" },
-
-    toggleBtn: { padding: "6px 16px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem", width: "80px", transition: "all 0.2s" },
-    
-    numInput: { background: "#18181b", border: "1px solid #3f3f46", color: "white", padding: "8px", borderRadius: "6px", width: "80px", textAlign: "center", fontWeight: "bold" },
-    select: { background: "#18181b", border: "1px solid #3f3f46", color: "white", padding: "8px 12px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }
-};

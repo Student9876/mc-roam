@@ -155,6 +155,11 @@ func (a *App) SaveWorldSetting(serverID string, username string, key string, val
 	if err != nil {
 		return "Error saving setting"
 	}
+
+	if err := a.saveWorldSettingLocal(serverID, key, value); err != nil {
+		a.Log("⚠️ Failed to persist local world setting: " + err.Error())
+	}
+
 	return "Success"
 }
 

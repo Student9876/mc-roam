@@ -1,7 +1,7 @@
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
-import './App.css';
+import { Toaster } from './components/ui/sonner';
 
 function App() {
     return (
@@ -12,6 +12,7 @@ function App() {
                 <Route path="/" element={<AuthPage />} />
                 <Route path="/dashboard" element={<Dashboard />} />
             </Routes>
+            <Toaster richColors position="bottom-right" />
         </HashRouter>
     );
 }

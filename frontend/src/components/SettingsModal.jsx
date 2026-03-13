@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
 import { GetServerOptions, SaveServerOptions, GetVersions } from '../../wailsjs/go/backend/App';
 import { ChangeServerVersionWails } from '../../wailsjs/go/backend/App';
-import './SettingsModal.css';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Settings2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function SettingsModal({ serverId, currentUser, onClose }) {
     const [props, setProps] = useState(null);
@@ -10,7 +16,6 @@ export default function SettingsModal({ serverId, currentUser, onClose }) {
     const [selectedType, setSelectedType] = useState('');
     const [selectedVersion, setSelectedVersion] = useState('');
     const [isChangingVersion, setIsChangingVersion] = useState(false);
-    const [versionChangeMsg, setVersionChangeMsg] = useState('');
 
     useEffect(() => {
         loadSettings();
@@ -31,24 +36,21 @@ export default function SettingsModal({ serverId, currentUser, onClose }) {
         setAvailableVersions(versions);
     };
 
+    const isSuccess = (result) => typeof result === 'string' && result.toLowerCase().startsWith('success');
+
     const handleSave = async () => {
         const updatedProps = { ...props, version: selectedVersion, type: selectedType };
         const result = await SaveServerOptions(serverId, currentUser, updatedProps);
-        alert(result);
-        onClose();
+        if (isSuccess(result)) {
+            toast.success("Settings saved.");
+            onClose();
+        } else {
+            toast.error(result || "Failed to save settings.");
+        }
     };
 
     const handleChange = (key, value) => {
         setProps(prev => ({ ...prev, [key]: value }));
-    };
-
-    const handleTypeChange = (e) => {
-        setSelectedType(e.target.value);
-        setSelectedVersion('');
-    };
-
-    const handleVersionChange = (e) => {
-        setSelectedVersion(e.target.value);
     };
 
     const handleChangeVersion = async () => {
@@ -58,153 +60,130 @@ export default function SettingsModal({ serverId, currentUser, onClose }) {
                 setIsChangingVersion(false);
                 return;
             }
-            await ChangeServerVersionWails(serverId, selectedType, selectedVersion);
-            onClose();
+            const result = await ChangeServerVersionWails(serverId, selectedType, selectedVersion);
+            if (isSuccess(result)) {
+                toast.success('Server version updated.');
+                onClose();
+            } else {
+                toast.error(result || 'Failed to change version.');
+            }
         } catch (err) {
-            // Errors will be shown in logs
+            toast.error('Failed to change version.');
         }
         setIsChangingVersion(false);
     };
 
-    if (isLoading) {
-        return <div className="settings-modal-loading">Loading Settings...</div>;
-    }
+    const sectionCls = "bg-muted/30 p-4 rounded-xl border border-border";
+    const sectionTitle = "text-xs font-bold uppercase tracking-wider text-primary mb-3 pb-2 border-b border-border";
+    const fieldLabel = "block text-xs text-muted-foreground font-medium mb-1.5 mt-2";
 
     return (
-        <div className="settings-modal-overlay" onClick={onClose}>
-            <div className="settings-modal-content" onClick={(e) => e.stopPropagation()}>
-                <div className="settings-modal-header">
-                    <h2 className="settings-modal-title">⚙️ Server Properties</h2>
-                    <button onClick={onClose} className="settings-modal-close-btn">✕</button>
-                </div>
+        <Dialog open onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-[850px] h-[85vh] max-h-[760px] flex flex-col gap-0 p-0 overflow-hidden">
+                <DialogHeader className="px-7 py-5 border-b border-border shrink-0">
+                    <DialogTitle className="flex items-center gap-2.5">
+                        <Settings2 className="size-5" /> Server Properties
+                    </DialogTitle>
+                </DialogHeader>
 
-                <div className="settings-modal-scroll">
-                    <div className="settings-modal-grid">
-                        {/* Version Change Section */}
-                        <div className="settings-modal-section">
-                            <h4>Change Server Version</h4>
-                            <label className="settings-modal-label">Type</label>
-                            <div className="settings-modal-input-wrapper">
-                                <select
-                                    value={selectedType || ''}
-                                    onChange={handleTypeChange}
-                                    className="settings-modal-input"
-                                    disabled={isChangingVersion}
-                                >
-                                    <option value="" disabled>Select type...</option>
-                                    {[...new Set(availableVersions.map(v => v.type))].map(type => (
-                                        <option key={type} value={type}>{type}</option>
-                                    ))}
-                                </select>
+                {isLoading ? (
+                    <div className="flex-1 flex items-center justify-center text-muted-foreground py-20">Loading settings...</div>
+                ) : (
+                    <div className="flex-1 min-h-0 overflow-y-auto">
+                        <div className="px-7 py-6 pb-8 grid grid-cols-3 gap-5">
+                            {/* Version Change */}
+                            <div className={sectionCls}>
+                                <h4 className={sectionTitle}>Change Version</h4>
+                                <label className={fieldLabel}>Type</label>
+                                <Select value={selectedType} onValueChange={(v) => { setSelectedType(v); setSelectedVersion(''); }} disabled={isChangingVersion}>
+                                    <SelectTrigger className="w-full mb-2">
+                                        <SelectValue placeholder="Select type..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {[...new Set(availableVersions.map(v => v.type))].map(type => (
+                                            <SelectItem key={type} value={type}>{type}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <label className={fieldLabel}>Version</label>
+                                <Select value={selectedVersion} onValueChange={setSelectedVersion} disabled={!selectedType || isChangingVersion}>
+                                    <SelectTrigger className="w-full mb-2">
+                                        <SelectValue placeholder="Select version..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableVersions.filter(v => v.type === selectedType).map(v => (
+                                            <SelectItem key={v.id} value={v.version}>{v.version}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Button className="mt-3 w-full" onClick={handleChangeVersion} disabled={isChangingVersion || !selectedVersion}>
+                                    {isChangingVersion ? 'Changing...' : 'Change Version'}
+                                </Button>
                             </div>
-                            <label className="settings-modal-label">Version</label>
-                            <div className="settings-modal-input-wrapper">
-                                <select
-                                    value={selectedVersion || ''}
-                                    onChange={handleVersionChange}
-                                    className="settings-modal-input"
-                                    disabled={!selectedType || isChangingVersion}
-                                >
-                                    <option value="" disabled>Select version...</option>
-                                    {availableVersions.filter(v => v.type === selectedType).map((v) => (
-                                        <option key={v.id} value={v.version}>
-                                            {v.version}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <button
-                                className="settings-modal-save-btn"
-                                style={{ marginTop: 12 }}
-                                onClick={handleChangeVersion}
-                                disabled={isChangingVersion}
-                            >
-                                {isChangingVersion ? 'Changing Version...' : 'Change Version'}
-                            </button>
-                        </div>
 
-                        {/* General Settings */}
-                        <div className="settings-modal-section">
-                            <h4>General</h4>
-                            <label className="settings-modal-label">Max Players</label>
-                            <div className="settings-modal-input-wrapper">
-                                <input
-                                    type="number"
-                                    value={props["max-players"]}
-                                    onChange={(e) => handleChange("max-players", e.target.value)}
-                                    className="settings-modal-input"
-                                />
+                            {/* General Settings */}
+                            <div className={sectionCls}>
+                                <h4 className={sectionTitle}>General</h4>
+                                <label className={fieldLabel}>Max Players</label>
+                                <Input type="number" className="mb-2" value={props["max-players"]} onChange={(e) => handleChange("max-players", e.target.value)} />
+                                <label className={fieldLabel}>Gamemode</label>
+                                <Select value={props["gamemode"]} onValueChange={(v) => handleChange("gamemode", v)}>
+                                    <SelectTrigger className="w-full mb-2"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        {["survival","creative","adventure","spectator"].map(m => (
+                                            <SelectItem key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <label className={fieldLabel}>Difficulty</label>
+                                <Select value={props["difficulty"]} onValueChange={(v) => handleChange("difficulty", v)}>
+                                    <SelectTrigger className="w-full mb-2"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        {["peaceful","easy","normal","hard"].map(d => (
+                                            <SelectItem key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
-                            <label className="settings-modal-label">Gamemode</label>
-                            <div className="settings-modal-input-wrapper">
-                                <select
-                                    value={props["gamemode"]}
-                                    onChange={(e) => handleChange("gamemode", e.target.value)}
-                                    className="settings-modal-input"
-                                >
-                                    <option value="survival">Survival</option>
-                                    <option value="creative">Creative</option>
-                                    <option value="adventure">Adventure</option>
-                                    <option value="spectator">Spectator</option>
-                                </select>
-                            </div>
-                            <label className="settings-modal-label">Difficulty</label>
-                            <div className="settings-modal-input-wrapper">
-                                <select
-                                    value={props["difficulty"]}
-                                    onChange={(e) => handleChange("difficulty", e.target.value)}
-                                    className="settings-modal-input"
-                                >
-                                    <option value="peaceful">Peaceful</option>
-                                    <option value="easy">Easy</option>
-                                    <option value="normal">Normal</option>
-                                    <option value="hard">Hard</option>
-                                </select>
-                            </div>
-                        </div>
 
-                        {/* Toggles */}
-                        <div className="settings-modal-section">
-                            <h4>Rules</h4>
-                            <Toggle label="Cracked (No Login)" checked={!props["online-mode"]} onChange={(v) => handleChange("online-mode", !v)} />
-                            <Toggle label="Whitelist" checked={props["white-list"]} onChange={(v) => handleChange("white-list", v)} />
-                            <Toggle label="PVP" checked={props["pvp"]} onChange={(v) => handleChange("pvp", v)} />
-                            <Toggle label="Command Blocks" checked={props["enable-command-block"]} onChange={(v) => handleChange("enable-command-block", v)} />
-                            <Toggle label="Fly" checked={props["allow-flight"]} onChange={(v) => handleChange("allow-flight", v)} />
-                            <Toggle label="Nether" checked={props["allow-nether"]} onChange={(v) => handleChange("allow-nether", v)} />
-                        </div>
+                            {/* Rules */}
+                            <div className={sectionCls}>
+                                <h4 className={sectionTitle}>Rules</h4>
+                                <ToggleRow label="Cracked (No Login)" checked={!props["online-mode"]} onChange={(v) => handleChange("online-mode", !v)} />
+                                <ToggleRow label="Whitelist" checked={props["white-list"]} onChange={(v) => handleChange("white-list", v)} />
+                                <ToggleRow label="PVP" checked={props["pvp"]} onChange={(v) => handleChange("pvp", v)} />
+                                <ToggleRow label="Command Blocks" checked={props["enable-command-block"]} onChange={(v) => handleChange("enable-command-block", v)} />
+                                <ToggleRow label="Fly" checked={props["allow-flight"]} onChange={(v) => handleChange("allow-flight", v)} />
+                                <ToggleRow label="Nether" checked={props["allow-nether"]} onChange={(v) => handleChange("allow-nether", v)} />
+                            </div>
 
-                        {/* Spawning */}
-                        <div className="settings-modal-section">
-                            <h4>Spawning</h4>
-                            <Toggle label="Monsters" checked={props["spawn-monsters"]} onChange={(v) => handleChange("spawn-monsters", v)} />
-                            <Toggle label="Animals" checked={props["spawn-animals"]} onChange={(v) => handleChange("spawn-animals", v)} />
-                            <Toggle label="Villagers" checked={props["spawn-npcs"]} onChange={(v) => handleChange("spawn-npcs", v)} />
+                            {/* Spawning */}
+                            <div className={sectionCls}>
+                                <h4 className={sectionTitle}>Spawning</h4>
+                                <ToggleRow label="Monsters" checked={props["spawn-monsters"]} onChange={(v) => handleChange("spawn-monsters", v)} />
+                                <ToggleRow label="Animals" checked={props["spawn-animals"]} onChange={(v) => handleChange("spawn-animals", v)} />
+                                <ToggleRow label="Villagers" checked={props["spawn-npcs"]} onChange={(v) => handleChange("spawn-npcs", v)} />
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
-                <div className="settings-modal-footer">
-                    <button onClick={handleSave} className="settings-modal-save-btn">Save Changes</button>
-                </div>
-            </div>
-        </div>
+                <DialogFooter className="px-7 py-4 border-t border-border shrink-0">
+                    <Button variant="ghost" onClick={onClose}>Cancel</Button>
+                    <Button onClick={handleSave} disabled={isLoading}>Save Changes</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
 
-// Helper Component for Toggle Switches
-function Toggle({ label, checked, onChange }) {
+function ToggleRow({ label, checked, onChange }) {
     return (
-        <div className="settings-modal-toggle-container">
-            <span className="settings-modal-toggle-label">{label}</span>
-            <label className="settings-modal-switch">
-                <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(e) => onChange(e.target.checked)}
-                />
-                <span className={`settings-modal-slider ${checked ? 'settings-modal-slider--checked' : 'settings-modal-slider--unchecked'}`}></span>
-            </label>
+        <div className="flex justify-between items-center mb-2 bg-background px-3.5 py-2.5 rounded-lg border border-border hover:border-muted-foreground/30 transition-colors">
+            <span className="text-sm text-foreground font-medium">{label}</span>
+            <Switch checked={!!checked} onCheckedChange={onChange} />
         </div>
     );
 }
+
+
