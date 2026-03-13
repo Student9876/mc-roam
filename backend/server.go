@@ -6,12 +6,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
 // CreateServer creates a new server group (UPDATED)
-func (a *App) CreateServer(serverName string, serverType string, version string, ownerUsername string, configString string) string {
+func (a *App) CreateServer(serverName string, serverType string, version string, ownerUsername string, configString string) ApiResult {
 	collection := DB.Client.Database("mc_roam").Collection("servers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -34,13 +33,13 @@ func (a *App) CreateServer(serverName string, serverType string, version string,
 
 	_, err := collection.InsertOne(ctx, newServer)
 	if err != nil {
-		return fmt.Sprintf("Error: Failed to create server: %v", err)
+		return ErrorResult("SERVER_CREATE_FAILED", fmt.Sprintf("Failed to create server: %v", err))
 	}
-	return newID // Return the server ID for frontend to use
+	return SuccessResultWithData("Server created", map[string]string{"serverId": newID})
 }
 
 // DeleteServer removes the server from DB, Local Disk, and Cloud
-func (a *App) DeleteServer(serverID string, username string) string {
+func (a *App) DeleteServer(serverID string, username string) ApiResult {
 	collection := DB.Client.Database("mc_roam").Collection("servers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -49,24 +48,24 @@ func (a *App) DeleteServer(serverID string, username string) string {
 	var serverDoc ServerGroup
 	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&serverDoc)
 	if err != nil {
-		return "Error: Server not found."
+		return ErrorResult("SERVER_NOT_FOUND", "Server not found")
 	}
 
 	// 2. SECURITY CHECK (The Fix)
 	// We check 'OwnerID' because that is what is stored in your MongoDB
 	if serverDoc.OwnerID != username {
-		return "Error: Only the server owner can delete this server."
+		return ErrorResult("FORBIDDEN", "Only the server owner can delete this server")
 	}
 
 	// 3. Safety Check: Is it running?
 	if serverDoc.Lock.IsRunning {
-		return "Error: Stop the server before deleting it."
+		return ErrorResult("SERVER_RUNNING", "Stop the server before deleting it")
 	}
 
 	// 4. Delete from Database
 	_, err = collection.DeleteOne(ctx, bson.M{"_id": serverID})
 	if err != nil {
-		return "Error: Failed to delete from DB."
+		return ErrorResult("DB_DELETE_FAILED", "Failed to delete from database")
 	}
 
 	// 5. Delete Local Files
@@ -89,7 +88,7 @@ func (a *App) DeleteServer(serverID string, username string) string {
 		}
 	}()
 
-	return "Success"
+	return SuccessResult("Server deleted")
 }
 
 // GetMyServers returns a list of servers the user belongs to
@@ -118,7 +117,7 @@ func (a *App) GetMyServers(username string) []ServerGroup {
 }
 
 // JoinServer adds the user to a server using an invite code
-func (a *App) JoinServer(inviteCode string, username string) string {
+func (a *App) JoinServer(inviteCode string, username string) ApiResult {
 	collection := DB.Client.Database("mc_roam").Collection("servers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -127,13 +126,13 @@ func (a *App) JoinServer(inviteCode string, username string) string {
 	var server ServerGroup
 	err := collection.FindOne(ctx, bson.M{"invite_code": inviteCode}).Decode(&server)
 	if err != nil {
-		return "Error: Invalid invite code"
+		return ErrorResult("INVALID_INVITE", "Invalid invite code")
 	}
 
 	// 2. Check if already a member
 	for _, member := range server.Members {
 		if member == username {
-			return "Error: Already a member"
+			return ErrorResult("ALREADY_MEMBER", "Already a member")
 		}
 	}
 
@@ -141,9 +140,9 @@ func (a *App) JoinServer(inviteCode string, username string) string {
 	update := bson.M{"$push": bson.M{"members": username}}
 	_, err = collection.UpdateOne(ctx, bson.M{"_id": server.ID}, update)
 	if err != nil {
-		return "Error: Failed to join server"
+		return ErrorResult("DB_UPDATE_FAILED", "Failed to join server")
 	}
-	return "Success: Joined server!"
+	return SuccessResult("Joined server")
 }
 
 func generateInviteCode() string {
@@ -152,7 +151,7 @@ func generateInviteCode() string {
 }
 
 // StartServer attempts to acquire the lock for a server
-func (a *App) StartServer(serverID string, username string) string {
+func (a *App) StartServer(serverID string, username string) ApiResult {
 	collection := DB.Client.Database("mc_roam").Collection("servers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -161,7 +160,7 @@ func (a *App) StartServer(serverID string, username string) string {
 	var serverDoc ServerGroup
 	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&serverDoc)
 	if err != nil {
-		return "Error: Server not found."
+		return ErrorResult("SERVER_NOT_FOUND", "Server not found")
 	}
 
 	// --- INJECT SHARED CLOUD CREDENTIALS ---
@@ -176,21 +175,21 @@ func (a *App) StartServer(serverID string, username string) string {
 			// Write the stored config to a local file
 			err := os.WriteFile("rclone.conf", []byte(serverDoc.RcloneConfig), 0644)
 			if err != nil {
-				return "Error writing shared credentials: " + err.Error()
+				return ErrorResult("CREDENTIAL_WRITE_FAILED", "Error writing shared credentials: "+err.Error())
 			}
 			a.Log("✅ Cloud credentials configured successfully!")
 		} else {
-			return "Error: No cloud credentials found for this server."
+			return ErrorResult("MISSING_CREDENTIALS", "No cloud credentials found for this server")
 		}
 	} else {
 		// Config exists, but ensure it's up to date with server's config
 		if serverDoc.RcloneConfig != "" {
 			err = a.InjectConfig(serverDoc.RcloneConfig)
 			if err != nil {
-				return "Error: Failed to inject cloud keys."
+				return ErrorResult("CREDENTIAL_INJECT_FAILED", "Failed to inject cloud keys")
 			}
 		} else {
-			return "Error: This server has no Cloud Config set up!"
+			return ErrorResult("MISSING_CREDENTIALS", "This server has no cloud config set up")
 		}
 	}
 	// ---------------------------------------------
@@ -214,10 +213,10 @@ func (a *App) StartServer(serverID string, username string) string {
 	}
 	result, err := collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		return "Error: Database connection failed"
+		return ErrorResult("DB_UPDATE_FAILED", "Database connection failed")
 	}
 	if result.ModifiedCount == 0 {
-		return "Error: Server is already running (Locked by someone else)!"
+		return ErrorResult("ALREADY_RUNNING", "Server is already running (locked by someone else)")
 	}
 
 	// --- PATH CALCULATION ---
@@ -227,7 +226,7 @@ func (a *App) StartServer(serverID string, username string) string {
 	// 4. Pre-Check Cloud Status
 	if !a.CheckCloudExists(remoteFolder) {
 		a.forceUnlock(serverID)
-		return "Error: directory not found (setup required)"
+		return ErrorResult("SETUP_REQUIRED", "directory not found (setup required)")
 	}
 
 	// 5. Trigger Sync Down
@@ -238,7 +237,7 @@ func (a *App) StartServer(serverID string, username string) string {
 	err = a.RunSync(SyncDown, remoteFolder, localInstance)
 	if err != nil {
 		a.forceUnlock(serverID)
-		return fmt.Sprintf("Error: Sync failed: %v", err)
+		return ErrorResult("SYNC_DOWN_FAILED", fmt.Sprintf("Sync failed: %v", err))
 	}
 
 	// 5.5. Check if server.jar exists (First-time setup check)
@@ -246,9 +245,9 @@ func (a *App) StartServer(serverID string, username string) string {
 	if _, err := os.Stat(serverJarPath); os.IsNotExist(err) {
 		a.Log("📦 First-time setup detected. Downloading server files...")
 		installResult := a.InstallServer(serverID)
-		if !strings.HasPrefix(installResult, "Success") {
+		if !installResult.OK {
 			a.forceUnlock(serverID)
-			return "Error: Installation failed: " + installResult
+			return ErrorResult("INSTALL_FAILED", "Installation failed: "+installResult.Message)
 		}
 		a.Log("✅ Server installation completed successfully!")
 	}
@@ -265,7 +264,7 @@ func (a *App) StartServer(serverID string, username string) string {
 	err = a.RunMinecraftServer(localInstance, port)
 	if err != nil {
 		a.StopServer(serverID, username)
-		return fmt.Sprintf("Error: Failed to launch: %v", err)
+		return ErrorResult("SERVER_LAUNCH_FAILED", fmt.Sprintf("Failed to launch: %v", err))
 	}
 
 	// 8. Start Playit Tunnel if config was deployed
@@ -279,11 +278,11 @@ func (a *App) StartServer(serverID string, username string) string {
 	}
 
 	// Return the port to the UI
-	return fmt.Sprintf("Success:%d", port)
+	return SuccessResultWithData(fmt.Sprintf("Success:%d", port), map[string]int{"port": port})
 }
 
 // StopServer syncs data BACK to the specific cloud folder
-func (a *App) StopServer(serverID string, username string) string {
+func (a *App) StopServer(serverID string, username string) ApiResult {
 
 	// Paths
 	localInstance := a.getInstancePath(serverID)
@@ -307,7 +306,7 @@ func (a *App) StopServer(serverID string, username string) string {
 	var doc ServerGroup
 	err := collection.FindOne(ctx, filter).Decode(&doc)
 	if err != nil {
-		return "Error: You are not the host, or server is already stopped."
+		return ErrorResult("NOT_HOST_OR_STOPPED", "You are not the host, or server is already stopped")
 	}
 
 	// 3. Sync Up (Push)
@@ -334,7 +333,7 @@ func (a *App) StopServer(serverID string, username string) string {
 		}
 		_, _ = collection.UpdateOne(ctx, bson.M{"_id": serverID}, updateSync)
 		if syncErr != nil {
-			return fmt.Sprintf("Error: Upload failed! Data NOT saved. (%v)", syncErr)
+			return ErrorResult("SYNC_UP_FAILED", fmt.Sprintf("Upload failed! Data NOT saved. (%v)", syncErr))
 		}
 	}
 
@@ -349,8 +348,8 @@ func (a *App) StopServer(serverID string, username string) string {
 	}
 	_, err = collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		return "Error: Database update failed (but files were synced!)"
+		return ErrorResult("DB_UPDATE_FAILED", "Database update failed (but files were synced)")
 	}
 
-	return "Success: Server Stopped & Saved!"
+	return SuccessResult("Server stopped and saved")
 }

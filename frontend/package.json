@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint src --ext js,jsx",
+    "format": "prettier --write \"src/**/*.{js,jsx,css}\" \"*.{js,html}\" \".prettierrc\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,css}\" \"*.{js,html}\" \".prettierrc\"",
+    "prepare": "husky install ../.husky"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
@@ -31,9 +35,25 @@
     "tailwindcss": "^4.2.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.22.0",
     "@types/react": "^18.0.17",
     "@types/react-dom": "^18.0.6",
     "@vitejs/plugin-react": "^4.7.0",
+    "eslint": "^9.22.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^16.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0",
+    "prettier": "^3.5.3",
     "vite": "^6.4.1"
+  },
+  "lint-staged": {
+    "*.{js,jsx,css,md,json}": [
+      "prettier --write"
+    ],
+    "*.go": [
+      "gofmt -w"
+    ]
   }
 }

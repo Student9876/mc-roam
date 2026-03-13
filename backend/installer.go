@@ -14,7 +14,7 @@ import (
 
 // InstallServer downloads the server and pushes it to the cloud
 // InstallServer downloads files and uploads them to a SERVER-SPECIFIC cloud folder
-func (a *App) InstallServer(serverID string) string {
+func (a *App) InstallServer(serverID string) ApiResult {
 
 	// 1. Get Server Details from Database
 	collection := DB.Client.Database("mc_roam").Collection("servers")
@@ -24,7 +24,7 @@ func (a *App) InstallServer(serverID string) string {
 	var server ServerGroup
 	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&server)
 	if err != nil {
-		return fmt.Sprintf("Error: Server not found: %v", err)
+		return ErrorResult("SERVER_NOT_FOUND", fmt.Sprintf("Server not found: %v", err))
 	}
 
 	// 2. Get Version Details (MATCHING TYPE AND VERSION)
@@ -39,7 +39,7 @@ func (a *App) InstallServer(serverID string) string {
 
 	err = vCollection.FindOne(ctx, filter).Decode(&versionDoc)
 	if err != nil {
-		return fmt.Sprintf("Error: Version not found for %s %s: %v", server.Type, server.Version, err)
+		return ErrorResult("VERSION_NOT_FOUND", fmt.Sprintf("Version not found for %s %s: %v", server.Type, server.Version, err))
 	}
 
 	// 3. Calculate Paths (DYNAMICALLY)
@@ -60,14 +60,14 @@ func (a *App) InstallServer(serverID string) string {
 
 	// 5. Re-create Directory
 	if err := os.MkdirAll(localInstance, 0755); err != nil {
-		return fmt.Sprintf("Error: Could not create folder: %v", err)
+		return ErrorResult("INSTANCE_DIR_CREATE_FAILED", fmt.Sprintf("Could not create folder: %v", err))
 	}
 
 	// 6. Download Server Jar using URL from database
 	a.Log(fmt.Sprintf("⬇️ Downloading %s %s Server Jar...", server.Type, server.Version))
 	err = downloadFile(versionDoc.Url, filepath.Join(localInstance, "server.jar"))
 	if err != nil {
-		return fmt.Sprintf("Error: Download failed: %v", err)
+		return ErrorResult("DOWNLOAD_FAILED", fmt.Sprintf("Download failed: %v", err))
 	}
 
 	// 7. Write Config Files
@@ -91,10 +91,10 @@ func (a *App) InstallServer(serverID string) string {
 	// CRITICAL FIX: Use 'remoteFolder' variable, NOT "minecraft-server"
 	err = a.RunSync(SyncUp, remoteFolder, localInstance)
 	if err != nil {
-		return fmt.Sprintf("Error: Failed to upload to cloud: %v", err)
+		return ErrorResult("SYNC_UP_FAILED", fmt.Sprintf("Failed to upload to cloud: %v", err))
 	}
 
-	return "Success: Server Installed & Uploaded!"
+	return SuccessResult("Server installed and uploaded")
 }
 
 // Helper function to download a file

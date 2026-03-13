@@ -42,9 +42,9 @@ func (a *App) ensurePlayitBinary() error {
 }
 
 // 1. Launch Terminal (Standard launch, we let it save to AppData)
-func (a *App) LaunchPlayitExternally(serverID string) string {
+func (a *App) LaunchPlayitExternally(serverID string) ApiResult {
 	if err := a.ensurePlayitBinary(); err != nil {
-		return "Error: Download failed"
+		return ErrorResult("PLAYIT_DOWNLOAD_FAILED", "Download failed")
 	}
 
 	// We just launch it. It will save config to %LocalAppData%\playit_gg\playit.toml
@@ -52,26 +52,26 @@ func (a *App) LaunchPlayitExternally(serverID string) string {
 	cmd := exec.Command("cmd", "/c", "start", "Playit Setup", "cmd", "/k", absPath)
 
 	if err := cmd.Start(); err != nil {
-		return "Error launching: " + err.Error()
+		return ErrorResult("PLAYIT_LAUNCH_FAILED", "Error launching: "+err.Error())
 	}
-	return "Success"
+	return SuccessResult("Playit setup terminal launched")
 }
 
 // 2. Import the config from AppData and save to User's DB record
-func (a *App) ImportPlayitConfig(username string) string {
+func (a *App) ImportPlayitConfig(username string) ApiResult {
 	// Construct path: C:\Users\User\AppData\Local\playit_gg\playit.toml
 	homeDir, _ := os.UserHomeDir()
 	globalConfigPath := filepath.Join(homeDir, "AppData", "Local", "playit_gg", "playit.toml")
 
 	// Check if it exists
 	if _, err := os.Stat(globalConfigPath); os.IsNotExist(err) {
-		return "Error: Config file not found in AppData. Did you claim the link?"
+		return ErrorResult("PLAYIT_CONFIG_NOT_FOUND", "Config file not found in AppData. Did you claim the link?")
 	}
 
 	// Read the content
 	content, err := os.ReadFile(globalConfigPath)
 	if err != nil {
-		return "Error reading config: " + err.Error()
+		return ErrorResult("PLAYIT_CONFIG_READ_FAILED", "Error reading config: "+err.Error())
 	}
 
 	// Save to user's database record
@@ -87,11 +87,11 @@ func (a *App) ImportPlayitConfig(username string) string {
 
 	_, err = collection.UpdateOne(ctx, bson.M{"username": username}, update)
 	if err != nil {
-		return "Error saving to database: " + err.Error()
+		return ErrorResult("DB_UPDATE_FAILED", "Error saving to database: "+err.Error())
 	}
 
 	a.Log("✅ Successfully saved Playit config to your account!")
-	return "Success"
+	return SuccessResult("Playit config saved")
 }
 
 // 3. Start Tunnel (Standard) with retry logic for cloud deployments

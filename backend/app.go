@@ -8,14 +8,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings" // Add this to imports at top!
+	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-	"go.mongodb.org/mongo-driver/bson" // Add this
-	// Add this
-	// Add this
+	"go.mongodb.org/mongo-driver/bson"
 )
+
+const dbWriteTimeout = 5 * time.Second
 
 // Build-time variables (set via -ldflags during compilation)
 // These will be injected by GitHub Actions from repository secrets
@@ -109,11 +109,12 @@ func (a *App) Log(message string) {
 	}
 }
 
-// SendConsoleCommand injects a command into the running Minecraft server
-func (a *App) SendConsoleCommand(serverID string, username string, command string) string {
+// SendConsoleCommand injects a command into the running Minecraft server.
+// This is used by world/player controls and must return deterministic errors.
+func (a *App) SendConsoleCommand(serverID string, username string, command string) ApiResult {
 	// Permission check: Only owner or admins can send console commands
 	if !a.IsAdmin(serverID, username) {
-		return "Error: Only admins can send console commands"
+		return ErrorResult("FORBIDDEN", "Only admins can send console commands")
 	}
 
 	// Security: Only allow if this is the currently running server
@@ -121,31 +122,33 @@ func (a *App) SendConsoleCommand(serverID string, username string, command strin
 	// For now, we use the global activeCmd/stdinPipe you set up earlier)
 
 	if activeCmd == nil || stdinPipe == nil {
-		return "Error: Server is not online."
+		return ErrorResult("SERVER_OFFLINE", "Server is not online")
 	}
 
 	// Write command to stdin (Minecraft console)
 	// Note: Minecraft commands need a newline "\n" at the end
 	_, err := stdinPipe.Write([]byte(command + "\n"))
 	if err != nil {
-		return "Error: Failed to send command."
+		return ErrorResult("COMMAND_SEND_FAILED", "Failed to send command")
 	}
 
 	a.Log("💻 Command Sent: " + command)
-	return "Success"
+	return SuccessResult("Command sent")
 }
 
-// SaveWorldSetting saves a world setting to the database (So the UI remembers your toggles)
-func (a *App) SaveWorldSetting(serverID string, username string, key string, value interface{}) string {
-	// Permission check: Only owner or admins can modify world settings
+// SaveWorldSetting persists a world setting in DB and local instance metadata.
+// The method returns explicit partial-failure semantics when local persistence fails.
+func (a *App) SaveWorldSetting(serverID string, username string, key string, value interface{}) ApiResult {
+	// Only owner/admin can mutate world settings.
 	if !a.IsAdmin(serverID, username) {
-		return "Error: Only admins can modify world settings"
+		return ErrorResult("FORBIDDEN", "Only admins can modify world settings")
 	}
 
 	collection := DB.Client.Database("mc_roam").Collection("servers")
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), dbWriteTimeout)
+	defer cancel()
 
-	// Update specific field in the map: world_settings.keepInventory
+	// Update just the targeted world_settings key to avoid replacing the whole map.
 	updateField := fmt.Sprintf("world_settings.%s", key)
 
 	_, err := collection.UpdateOne(ctx, bson.M{"_id": serverID}, bson.M{
@@ -153,14 +156,15 @@ func (a *App) SaveWorldSetting(serverID string, username string, key string, val
 	})
 
 	if err != nil {
-		return "Error saving setting"
+		return ErrorResult("DB_UPDATE_FAILED", "Failed to save world setting")
 	}
 
 	if err := a.saveWorldSettingLocal(serverID, key, value); err != nil {
 		a.Log("⚠️ Failed to persist local world setting: " + err.Error())
+		return ErrorResult("LOCAL_PERSIST_FAILED", "World setting saved in database but failed to persist locally")
 	}
 
-	return "Success"
+	return SuccessResult("World setting saved")
 }
 
 // AuthorizeDrive runs the interactive Rclone login flow
@@ -298,7 +302,7 @@ func (a *App) IsAdmin(serverID string, username string) bool {
 }
 
 // SetAdmin adds a user to the server's admin list
-func (a *App) SetAdmin(serverID string, targetUsername string, requesterUsername string) string {
+func (a *App) SetAdmin(serverID string, targetUsername string, requesterUsername string) ApiResult {
 	collection := DB.Client.Database("mc_roam").Collection("servers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -307,17 +311,17 @@ func (a *App) SetAdmin(serverID string, targetUsername string, requesterUsername
 	var server ServerGroup
 	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&server)
 	if err != nil {
-		return "Error: Server not found"
+		return ErrorResult("SERVER_NOT_FOUND", "Server not found")
 	}
 
 	// 2. Only owner can assign admins
 	if server.OwnerID != requesterUsername {
-		return "Error: Only the server owner can assign admins"
+		return ErrorResult("FORBIDDEN", "Only the server owner can assign admins")
 	}
 
 	// 3. Can't admin yourself (owner is already admin by default)
 	if targetUsername == requesterUsername {
-		return "Error: You are already the owner"
+		return ErrorResult("OWNER_ALREADY_ADMIN", "You are already the owner")
 	}
 
 	// 4. Check if target is a member
@@ -329,13 +333,13 @@ func (a *App) SetAdmin(serverID string, targetUsername string, requesterUsername
 		}
 	}
 	if !isMember {
-		return "Error: User must be a server member first"
+		return ErrorResult("NOT_A_MEMBER", "User must be a server member first")
 	}
 
 	// 5. Check if already admin
 	for _, admin := range server.Admins {
 		if admin == targetUsername {
-			return "Error: User is already an admin"
+			return ErrorResult("ALREADY_ADMIN", "User is already an admin")
 		}
 	}
 
@@ -346,15 +350,15 @@ func (a *App) SetAdmin(serverID string, targetUsername string, requesterUsername
 		bson.M{"$push": bson.M{"admins": targetUsername}},
 	)
 	if err != nil {
-		return "Error: Failed to update database"
+		return ErrorResult("DB_UPDATE_FAILED", "Failed to update database")
 	}
 
 	a.Log(fmt.Sprintf("✅ %s is now an admin of this server", targetUsername))
-	return "Success"
+	return SuccessResult("Admin added")
 }
 
 // RemoveAdmin removes a user from the server's admin list
-func (a *App) RemoveAdmin(serverID string, targetUsername string, requesterUsername string) string {
+func (a *App) RemoveAdmin(serverID string, targetUsername string, requesterUsername string) ApiResult {
 	collection := DB.Client.Database("mc_roam").Collection("servers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -363,17 +367,17 @@ func (a *App) RemoveAdmin(serverID string, targetUsername string, requesterUsern
 	var server ServerGroup
 	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&server)
 	if err != nil {
-		return "Error: Server not found"
+		return ErrorResult("SERVER_NOT_FOUND", "Server not found")
 	}
 
 	// 2. Only owner can remove admins
 	if server.OwnerID != requesterUsername {
-		return "Error: Only the server owner can remove admins"
+		return ErrorResult("FORBIDDEN", "Only the server owner can remove admins")
 	}
 
 	// 3. Can't remove owner
 	if targetUsername == server.OwnerID {
-		return "Error: Cannot remove owner from admin status"
+		return ErrorResult("OWNER_IMMUTABLE", "Cannot remove owner from admin status")
 	}
 
 	// 4. Remove from admins list
@@ -383,11 +387,11 @@ func (a *App) RemoveAdmin(serverID string, targetUsername string, requesterUsern
 		bson.M{"$pull": bson.M{"admins": targetUsername}},
 	)
 	if err != nil {
-		return "Error: Failed to update database"
+		return ErrorResult("DB_UPDATE_FAILED", "Failed to update database")
 	}
 
 	a.Log(fmt.Sprintf("ℹ️ %s is no longer an admin", targetUsername))
-	return "Success"
+	return SuccessResult("Admin removed")
 }
 
 // GetAdmins returns the list of server admins (including owner)

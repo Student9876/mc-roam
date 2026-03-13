@@ -21,17 +21,17 @@ func (a *App) GetPlayerLists(serverID string) PlayerLists {
 }
 
 // ManagePlayer sends commands to modify lists (ONLY if server is running)
-func (a *App) ManagePlayer(serverID string, username string, action string, target string, extra string) string {
+func (a *App) ManagePlayer(serverID string, username string, action string, target string, extra string) ApiResult {
 	// Permission check: Only owner or admins can manage players
 	if !a.IsAdmin(serverID, username) {
-		return "Error: Only admins can manage players"
+		return ErrorResult("FORBIDDEN", "Only admins can manage players")
 	}
 
 	// action: "op", "deop", "whitelist add", "whitelist remove", "ban", "pardon"
 
 	// Check if server is online (Commands require a running server)
 	if activeCmd == nil || stdinPipe == nil {
-		return "Error: Server must be ONLINE to manage players."
+		return ErrorResult("SERVER_OFFLINE", "Server must be ONLINE to manage players")
 	}
 
 	command := ""
@@ -79,8 +79,8 @@ func (a *App) ManagePlayer(serverID string, username string, action string, targ
 	case "teleport_coords":
 		// Syntax: tp <target> x y z
 		command = "tp " + target + " " + extra
-
-		return "Error: Unknown action"
+	default:
+		return ErrorResult("UNKNOWN_ACTION", "Unknown action")
 	}
 
 	return a.SendConsoleCommand(serverID, username, command)

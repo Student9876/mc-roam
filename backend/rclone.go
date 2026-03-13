@@ -239,7 +239,7 @@ func (a *App) CheckCloudExists(folderName string) bool {
 }
 
 // ForceSyncUp is called after setup to ensure config files are saved to cloud
-func (a *App) ForceSyncUp(serverID string) string {
+func (a *App) ForceSyncUp(serverID string) ApiResult {
 	collection := DB.Client.Database("mc_roam").Collection("servers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -247,7 +247,7 @@ func (a *App) ForceSyncUp(serverID string) string {
 	var server ServerGroup
 	err := collection.FindOne(ctx, bson.M{"_id": serverID}).Decode(&server)
 	if err != nil {
-		return "Error: Server not found"
+		return ErrorResult("SERVER_NOT_FOUND", "Server not found")
 	}
 
 	localPath := a.getInstancePath(serverID)
@@ -268,7 +268,7 @@ func (a *App) ForceSyncUp(serverID string) string {
 	}
 	_, _ = collection.UpdateOne(ctx, bson.M{"_id": serverID}, updateSync)
 	if syncErr != nil {
-		return "Error syncing: " + syncErr.Error()
+		return ErrorResult("SYNC_UP_FAILED", "Error syncing: "+syncErr.Error())
 	}
-	return "Success"
+	return SuccessResult("Sync completed")
 }

@@ -1,5 +1,23 @@
 export namespace backend {
 	
+	export class ApiResult {
+	    ok: boolean;
+	    message: string;
+	    code?: string;
+	    data?: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.message = source["message"];
+	        this.code = source["code"];
+	        this.data = source["data"];
+	    }
+	}
 	export class PlayerEntry {
 	    uuid: string;
 	    name: string;

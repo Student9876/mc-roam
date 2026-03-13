@@ -4,17 +4,17 @@ import Dashboard from './pages/Dashboard';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
-    return (
-        // We use HashRouter because Wails apps serve from a local file system
-        // BrowserRouter often fails in desktop apps without server configuration
-        <HashRouter>
-            <Routes>
-                <Route path="/" element={<AuthPage />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-            </Routes>
-            <Toaster richColors position="bottom-right" />
-        </HashRouter>
-    );
+  return (
+    // We use HashRouter because Wails apps serve from a local file system
+    // BrowserRouter often fails in desktop apps without server configuration
+    <HashRouter>
+      <Routes>
+        <Route path="/" element={<AuthPage />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+      <Toaster richColors position="bottom-right" />
+    </HashRouter>
+  );
 }
 
 export default App;

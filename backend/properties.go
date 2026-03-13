@@ -88,11 +88,11 @@ func (a *App) GetServerOptions(serverID string) ServerProps {
 	return props
 }
 
-// SaveServerOptions writes the struct back to the file
-func (a *App) SaveServerOptions(serverID string, username string, props ServerProps) string {
-	// Permission check: Only owner or admins can modify server options
+// SaveServerOptions updates server.properties while preserving unrelated keys/comments.
+func (a *App) SaveServerOptions(serverID string, username string, props ServerProps) ApiResult {
+	// Only owner/admin can mutate server options.
 	if !a.IsAdmin(serverID, username) {
-		return "Error: Only admins can modify server options"
+		return ErrorResult("FORBIDDEN", "Only admins can modify server options")
 	}
 
 	path := filepath.Join(a.getInstancePath(serverID), "server.properties")
@@ -100,7 +100,7 @@ func (a *App) SaveServerOptions(serverID string, username string, props ServerPr
 	// We read the whole file to preserve comments and formatting for other keys
 	input, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Sprintf("Error reading file: %v", err)
+		return ErrorResult("FILE_READ_FAILED", fmt.Sprintf("Error reading file: %v", err))
 	}
 
 	lines := strings.Split(string(input), "\n")
@@ -150,7 +150,7 @@ func (a *App) SaveServerOptions(serverID string, username string, props ServerPr
 
 	err = os.WriteFile(path, []byte(strings.Join(output, "\n")), 0644)
 	if err != nil {
-		return fmt.Sprintf("Error saving: %v", err)
+		return ErrorResult("FILE_WRITE_FAILED", fmt.Sprintf("Error saving: %v", err))
 	}
-	return "Success: Settings Saved!"
+	return SuccessResult("Settings saved")
 }

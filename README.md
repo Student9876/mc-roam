@@ -114,23 +114,45 @@ go install github.com/wailsapp/wails/v2/cmd/wails@latest
 # Install frontend dependencies
 cd frontend
 npm install
+npm run prepare
 cd ..
 
-# Build
-wails build -ldflags "-X 'mc-roam/backend.MongoDBURI=YOUR_MONGODB_URI' -X 'mc-roam/backend.GoogleClientID=YOUR_GOOGLE_CLIENT_ID' -X 'mc-roam/backend.GoogleClientSecret=YOUR_GOOGLE_CLIENT_SECRET'"
+# Set environment variables in your shell (never inline secrets in command history)
+# Windows PowerShell:
+#   $env:MONGODB_URI="..."
+#   $env:GOOGLE_CLIENT_ID="..."
+#   $env:GOOGLE_CLIENT_SECRET="..."
+# Linux/macOS (bash/zsh):
+#   export MONGODB_URI="..."
+#   export GOOGLE_CLIENT_ID="..."
+#   export GOOGLE_CLIENT_SECRET="..."
+
+# Build (reads env vars and injects them at build time)
+wails build -ldflags "-X 'mc-roam/backend.MongoDBURI=${MONGODB_URI}' -X 'mc-roam/backend.GoogleClientID=${GOOGLE_CLIENT_ID}' -X 'mc-roam/backend.GoogleClientSecret=${GOOGLE_CLIENT_SECRET}'"
 ```
 
-This command builds the MC Roam application and injects your custom environment variables directly into the binary using Go's `-ldflags` option:
+This command builds the MC Roam application and injects environment variables into the binary using Go's `-ldflags` option:
 
--   `YOUR_MONGODB_URI`: Replace with your MongoDB connection string (e.g., from MongoDB Atlas).
--   `YOUR_GOOGLE_CLIENT_ID`: Replace with your Google OAuth client ID.
--   `YOUR_GOOGLE_CLIENT_SECRET`: Replace with your Google OAuth client secret.
+-   `MONGODB_URI`: Your MongoDB connection string (e.g., from MongoDB Atlas).
+-   `GOOGLE_CLIENT_ID`: Your Google OAuth client ID.
+-   `GOOGLE_CLIENT_SECRET`: Your Google OAuth client secret.
 
-By passing these values at build time, you avoid the need for a separate `.env` file and ensure the app is configured with your credentials out of the box. Never commit real credentials to your repository.
+Never commit real credentials, and avoid passing secrets inline on the same command line because shell history may capture them.
 
 # Output will be in build/bin/mc-roam.exe
 
-> **For Developers:** If you need to override default services (MongoDB, Google OAuth), create a `.env` file with your own credentials. See `.env.example` for details.
+> **For Developers:** Use `.env.example` as a template for local values and keep `.env` untracked.
+
+### Contributor Workflow (Formatting + Lint)
+
+From `frontend`:
+
+```bash
+npm install
+npm run prepare
+```
+
+This installs the pre-commit hook (`.husky/pre-commit`) that auto-formats staged files with Prettier and `gofmt` via lint-staged.
 
 ---
 

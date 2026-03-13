@@ -10,7 +10,7 @@ import (
 )
 
 // Register creates a new user in MongoDB
-func (a *App) Register(username string, password string) string {
+func (a *App) Register(username string, password string) ApiResult {
 	collection := DB.Client.Database("mc_roam").Collection("users")
 
 	// 1. Check if user already exists
@@ -20,13 +20,13 @@ func (a *App) Register(username string, password string) string {
 	var existingUser User
 	err := collection.FindOne(ctx, bson.M{"username": username}).Decode(&existingUser)
 	if err == nil {
-		return "Error: Username already exists"
+		return ErrorResult("USERNAME_EXISTS", "Username already exists")
 	}
 
 	// 2. Hash the password
 	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	if err != nil {
-		return "Error: Could not hash password"
+		return ErrorResult("PASSWORD_HASH_FAILED", "Could not hash password")
 	}
 
 	// 3. Create the user object
@@ -38,14 +38,14 @@ func (a *App) Register(username string, password string) string {
 	// 4. Insert into DB
 	_, err = collection.InsertOne(ctx, newUser)
 	if err != nil {
-		return fmt.Sprintf("Error: Database insert failed: %v", err)
+		return ErrorResult("DB_INSERT_FAILED", fmt.Sprintf("Database insert failed: %v", err))
 	}
 
-	return "Success: User registered!"
+	return SuccessResult("User registered")
 }
 
 // Login verifies credentials
-func (a *App) Login(username string, password string) string {
+func (a *App) Login(username string, password string) ApiResult {
 	collection := DB.Client.Database("mc_roam").Collection("users")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*1e9)
@@ -55,16 +55,16 @@ func (a *App) Login(username string, password string) string {
 	var user User
 	err := collection.FindOne(ctx, bson.M{"username": username}).Decode(&user)
 	if err == mongo.ErrNoDocuments {
-		return "Error: User not found"
+		return ErrorResult("USER_NOT_FOUND", "User not found")
 	} else if err != nil {
-		return "Error: Database error"
+		return ErrorResult("DB_ERROR", "Database error")
 	}
 
 	// 2. Compare the password with the hash
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
-		return "Error: Invalid password"
+		return ErrorResult("INVALID_PASSWORD", "Invalid password")
 	}
 
-	return "Success: Logged in as " + user.Username
+	return SuccessResultWithData("Logged in", map[string]string{"username": user.Username})
 }

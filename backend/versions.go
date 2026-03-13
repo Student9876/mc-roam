@@ -17,7 +17,7 @@ func (a *App) GetVersions() []ServerVersion {
 	defer cancel()
 
 	// Sort by Version descending (simplified sort)
-	opts := options.Find().SetSort(bson.D{{"version", -1}})
+	opts := options.Find().SetSort(bson.D{{Key: "version", Value: -1}})
 	cursor, err := collection.Find(ctx, bson.M{}, opts)
 	if err != nil {
 		return []ServerVersion{}
@@ -104,8 +104,8 @@ func (a *App) SeedVersions() {
 	}
 }
 
-// ChangeServerVersion changes the server type and version, preserving world/config files
-func (a *App) ChangeServerVersion(serverID string, newType string, newVersion string, username string) string {
+// ChangeServerVersion changes the server type/version while preserving world/config files.
+func (a *App) ChangeServerVersion(serverID string, newType string, newVersion string, username string) ApiResult {
 	// 0. Check if server is running (locked)
 	serversColl := DB.Client.Database("mc_roam").Collection("servers")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
@@ -113,10 +113,10 @@ func (a *App) ChangeServerVersion(serverID string, newType string, newVersion st
 	var serverDoc ServerGroup
 	err := serversColl.FindOne(ctx, bson.M{"_id": serverID}).Decode(&serverDoc)
 	if err != nil {
-		return "Error: Server not found"
+		return ErrorResult("SERVER_NOT_FOUND", "Server not found")
 	}
 	if serverDoc.Lock.IsRunning {
-		return "Error: Cannot change version while server is running! Please stop the server first."
+		return ErrorResult("SERVER_RUNNING", "Cannot change version while server is running. Please stop the server first.")
 	}
 
 	// 1. Lookup the requested version/type in the versions collection
@@ -124,7 +124,7 @@ func (a *App) ChangeServerVersion(serverID string, newType string, newVersion st
 	var versionDoc ServerVersion
 	err = versionsColl.FindOne(ctx, bson.M{"type": newType, "version": newVersion}).Decode(&versionDoc)
 	if err != nil {
-		return "Error: Version not found in database"
+		return ErrorResult("VERSION_NOT_FOUND", "Version not found in database")
 	}
 
 	// 2. Sync down latest files from cloud
@@ -133,7 +133,7 @@ func (a *App) ChangeServerVersion(serverID string, newType string, newVersion st
 	a.Log("🔄 Syncing down latest files before version change...")
 	err = a.RunSync(SyncDown, remoteFolder, instancePath)
 	if err != nil {
-		return "Error: Sync down failed: " + err.Error()
+		return ErrorResult("SYNC_DOWN_FAILED", "Sync down failed: "+err.Error())
 	}
 
 	// 3. Replace server.jar (and any other necessary files)
@@ -143,32 +143,32 @@ func (a *App) ChangeServerVersion(serverID string, newType string, newVersion st
 		a.Log("Instance directory missing, creating: " + instancePath)
 		if err := os.MkdirAll(instancePath, 0755); err != nil {
 			a.Log("Failed to create instance directory: " + err.Error())
-			return "Error: Failed to create instance directory: " + err.Error()
+			return ErrorResult("INSTANCE_DIR_CREATE_FAILED", "Failed to create instance directory: "+err.Error())
 		}
 	}
 	os.Remove(jarPath)
 	out, err := os.Create(jarPath)
 	if err != nil {
 		a.Log("Failed to create server.jar: " + err.Error())
-		return "Error: Failed to create server.jar file: " + err.Error()
+		return ErrorResult("SERVER_JAR_CREATE_FAILED", "Failed to create server.jar file: "+err.Error())
 	}
 	defer out.Close()
 	resp, err := DownloadFile(versionDoc.Url)
 	if err != nil {
 		a.Log("Failed to download new server jar: " + err.Error())
-		return "Error: Failed to download new server jar: " + err.Error()
+		return ErrorResult("SERVER_JAR_DOWNLOAD_FAILED", "Failed to download new server jar: "+err.Error())
 	}
 	defer resp.Body.Close()
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
 		a.Log("Failed to write new server jar: " + err.Error())
-		return "Error: Failed to write new server jar: " + err.Error()
+		return ErrorResult("SERVER_JAR_WRITE_FAILED", "Failed to write new server jar: "+err.Error())
 	}
 
 	// 4. Update the server's type and version in the DB
 	_, err = serversColl.UpdateOne(ctx, bson.M{"_id": serverID}, bson.M{"$set": bson.M{"type": newType, "version": newVersion}})
 	if err != nil {
-		return "Error: Failed to update server type/version in database"
+		return ErrorResult("DB_UPDATE_FAILED", "Failed to update server type/version in database")
 	}
 
 	// 5. Sync up to save changes in cloud
@@ -188,15 +188,15 @@ func (a *App) ChangeServerVersion(serverID string, newType string, newVersion st
 	}
 	_, _ = serversColl.UpdateOne(ctx, bson.M{"_id": serverID}, updateSync)
 	if syncErr != nil {
-		return "Error: Sync up failed: " + syncErr.Error()
+		return ErrorResult("SYNC_UP_FAILED", "Sync up failed: "+syncErr.Error())
 	}
 
 	a.Log("✅ Server version changed: " + newType + " " + newVersion)
-	return "Success: Server version changed to " + newType + " " + newVersion
+	return SuccessResult("Server version changed to " + newType + " " + newVersion)
 }
 
 // Wails method: ChangeServerVersion
 // Expose to frontend
-func (a *App) ChangeServerVersionWails(serverID string, newType string, newVersion string, username string) string {
+func (a *App) ChangeServerVersionWails(serverID string, newType string, newVersion string, username string) ApiResult {
 	return a.ChangeServerVersion(serverID, newType, newVersion, username)
 }

@@ -4,9 +4,9 @@ import {backend} from '../models';
 
 export function AuthorizeDrive(arg1:string,arg2:string):Promise<string>;
 
-export function ChangeServerVersion(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
+export function ChangeServerVersion(arg1:string,arg2:string,arg3:string,arg4:string):Promise<backend.ApiResult>;
 
-export function ChangeServerVersionWails(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
+export function ChangeServerVersionWails(arg1:string,arg2:string,arg3:string,arg4:string):Promise<backend.ApiResult>;
 
 export function CheckCloudExists(arg1:string):Promise<boolean>;
 
@@ -16,15 +16,15 @@ export function CheckUserHasPlayit(arg1:string):Promise<boolean>;
 
 export function CleanLocks(arg1:string):Promise<void>;
 
-export function CreateServer(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
+export function CreateServer(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<backend.ApiResult>;
 
-export function DeleteServer(arg1:string,arg2:string):Promise<string>;
+export function DeleteServer(arg1:string,arg2:string):Promise<backend.ApiResult>;
 
 export function FindProcessLockingFile(arg1:string):Promise<Array<number>>;
 
 export function ForceKillPort(arg1:number):Promise<void>;
 
-export function ForceSyncUp(arg1:string):Promise<string>;
+export function ForceSyncUp(arg1:string):Promise<backend.ApiResult>;
 
 export function GetAdmins(arg1:string):Promise<Array<string>>;
 
@@ -42,17 +42,17 @@ export function Greet(arg1:string):Promise<string>;
 
 export function HasLocalServerFiles(arg1:string):Promise<boolean>;
 
-export function ImportPlayitConfig(arg1:string):Promise<string>;
+export function ImportPlayitConfig(arg1:string):Promise<backend.ApiResult>;
 
 export function InjectConfig(arg1:string):Promise<void>;
 
 export function InstallDependencies():Promise<void>;
 
-export function InstallServer(arg1:string):Promise<string>;
+export function InstallServer(arg1:string):Promise<backend.ApiResult>;
 
 export function IsAdmin(arg1:string,arg2:string):Promise<boolean>;
 
-export function JoinServer(arg1:string,arg2:string):Promise<string>;
+export function JoinServer(arg1:string,arg2:string):Promise<backend.ApiResult>;
 
 export function KillMinecraftServer():Promise<void>;
 
@@ -60,39 +60,39 @@ export function KillProcessesLockingLogs(arg1:string):Promise<void>;
 
 export function KillZombie(arg1:string):Promise<void>;
 
-export function LaunchPlayitExternally(arg1:string):Promise<string>;
+export function LaunchPlayitExternally(arg1:string):Promise<backend.ApiResult>;
 
 export function Log(arg1:string):Promise<void>;
 
-export function Login(arg1:string,arg2:string):Promise<string>;
+export function Login(arg1:string,arg2:string):Promise<backend.ApiResult>;
 
-export function ManagePlayer(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
+export function ManagePlayer(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<backend.ApiResult>;
 
 export function PurgeRemote(arg1:string):Promise<void>;
 
-export function Register(arg1:string,arg2:string):Promise<string>;
+export function Register(arg1:string,arg2:string):Promise<backend.ApiResult>;
 
-export function RemoveAdmin(arg1:string,arg2:string,arg3:string):Promise<string>;
+export function RemoveAdmin(arg1:string,arg2:string,arg3:string):Promise<backend.ApiResult>;
 
 export function RunMinecraftServer(arg1:string,arg2:number):Promise<void>;
 
 export function RunSync(arg1:backend.SyncDirection,arg2:string,arg3:string):Promise<void>;
 
-export function SaveServerOptions(arg1:string,arg2:string,arg3:backend.ServerProps):Promise<string>;
+export function SaveServerOptions(arg1:string,arg2:string,arg3:backend.ServerProps):Promise<backend.ApiResult>;
 
-export function SaveWorldSetting(arg1:string,arg2:string,arg3:string,arg4:any):Promise<string>;
+export function SaveWorldSetting(arg1:string,arg2:string,arg3:string,arg4:any):Promise<backend.ApiResult>;
 
 export function SeedVersions():Promise<void>;
 
-export function SendConsoleCommand(arg1:string,arg2:string,arg3:string):Promise<string>;
+export function SendConsoleCommand(arg1:string,arg2:string,arg3:string):Promise<backend.ApiResult>;
 
-export function SetAdmin(arg1:string,arg2:string,arg3:string):Promise<string>;
+export function SetAdmin(arg1:string,arg2:string,arg3:string):Promise<backend.ApiResult>;
 
 export function StartPlayitTunnel(arg1:string):Promise<void>;
 
-export function StartServer(arg1:string,arg2:string):Promise<string>;
+export function StartServer(arg1:string,arg2:string):Promise<backend.ApiResult>;
 
-export function StopServer(arg1:string,arg2:string):Promise<string>;
+export function StopServer(arg1:string,arg2:string):Promise<backend.ApiResult>;
 
 export function StopTunnel():Promise<void>;
 
